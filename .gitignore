@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables (Crucial: Protect API Keys & Secrets)
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+!.env.example
+
+# Expo & Mobile builds
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Scratch & Temporary browser artifacts
+scratch_chrome/
+temp_profile/
+temp_profile_edge/
+test_dom.html
