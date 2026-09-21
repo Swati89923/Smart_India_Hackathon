@@ -23,23 +23,43 @@
 
 ---
 
-## 📁 Repository Structure
+## 📁 Modular Repository Architecture
 
 ```
 SIH_2026/
-├── CLAUDE.md                # Complete technical architecture & AI guide
-├── SPEC.md                  # Comprehensive product specification
-├── sih-artisan-app/
-│   ├── backend/             # Node.js + Express API service (Port 4000)
-│   │   ├── src/             # Routes, Gemini AI services, database models
-│   │   ├── schema.sql       # PostgreSQL production schema
-│   │   ├── data.json        # Demo artisan & product data
-│   │   └── .env.example     # Environment variables template
-│   └── mobile/              # React Native (Expo) mobile application
-│       ├── src/             # Screens (Artisan, Buyer, Catalog, Negotiation)
-│       └── App.js           # Navigation & app entry point
-└── README.md
+├── image-enhancement/            # Module 01: Image Pre-processing, Studio Lighting & Cleanup
+│   └── src/ (algorithms, pipelines, presets) & tests/
+├── artisan-ui/                   # Module 02: Artisan Voice-First UI & 7-Step Onboarding Logic
+│   └── src/ (components, screens, hooks, navigation, assets)
+├── ai-catalogue-generator/       # Module 03: Multilingual Story & ONDC Catalogue Generator (Gemini + Bhashini)
+│   └── src/ (prompts, voice-transcription, translation, ondc-schema)
+├── ai-pricing-engine/            # Module 04: Fair Pricing Engine, Benchmarks & Floor Protection
+│   └── src/ (models, benchmarks, guardrails)
+├── buyer-marketplace-ui/         # Module 05: Buyer Discovery, Audio Storytelling & Negotiation Chat
+│   └── src/ (components, screens, negotiation, navigation)
+├── backend-api/                  # Module 06: Central Express API, Auth, Database & AI Orchestration
+│   └── src/ (controllers, routes, models, services, config)
+│
+├── sih-artisan-app/              # Integrated Working Prototype (Expo Mobile + Express Backend)
+│   ├── backend/                  # Working Node.js + Express API service (Port 4000)
+│   └── mobile/                   # Working React Native (Expo) mobile application
+├── CLAUDE.md                     # Complete technical architecture & AI guide
+├── SPEC.md                       # Comprehensive product specification
+└── README.md                     # Master project overview & quickstart
 ```
+
+---
+
+### 🧩 Module Deep-Dives
+
+| Module | Purpose & Pipeline Stage | Key Technologies |
+| :--- | :--- | :--- |
+| [**`image-enhancement/`**](./image-enhancement/README.md) | Studio lighting, background removal & high-res craft enhancement | Sharp, Rembg, Computer Vision |
+| [**`artisan-ui/`**](./artisan-ui/README.md) | Voice-first, vernacular UI & onboarding for rural artisans | React Native / Expo, Lucide Icons |
+| [**`ai-catalogue-generator/`**](./ai-catalogue-generator/README.md) | Vernacular speech-to-text, storytelling & ONDC taxonomy | Google Gemini 1.5, Bhashini ASR |
+| [**`ai-pricing-engine/`**](./ai-pricing-engine/README.md) | Cost-plus pricing formula, craft indices & floor price protection | Mathematical models, Benchmark Data |
+| [**`buyer-marketplace-ui/`**](./buyer-marketplace-ui/README.md) | Conscious buyer discovery, cost breakdown view & live negotiation | React Native / Web, WebSockets |
+| [**`backend-api/`**](./backend-api/README.md) | Centralized REST APIs, DB persistence, Auth & AI coordination | Node.js, Express, PostgreSQL |
 
 ---
 
