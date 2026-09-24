@@ -106,38 +106,42 @@ npx expo start
 
 ---
 
-## 👥 Team Setup (clone → apni keys → run)
+## 👥 Team Setup (clone → add your own keys → run)
 
-> Har teammate **apni khud ki keys** use karta hai. `.env` files kabhi GitHub pe nahi jaati (`.gitignore` mein hain) — sirf `.env.example` templates repo mein hain.
+> Every teammate uses **their own API keys**. `.env` files are never pushed to GitHub (they are listed in `.gitignore`) — only the `.env.example` templates live in the repo.
+
+**Prerequisites:** [Node.js](https://nodejs.org) **22 LTS** or newer (the web app needs Node ≥ 20.19), npm, and Chrome or Edge (for voice input).
 
 ```bash
 git clone https://github.com/Swati89923/Smart_India_Hackathon.git
 cd Smart_India_Hackathon/sih-artisan-app
 
-# 1) Backend
+# 1) Backend (terminal 1)
 cd backend
 npm install
 cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
-# .env kholo aur apni keys daalo (neeche table dekho), save karo
-npm run dev                 # http://localhost:4000  (.env save karte hi auto-restart)
+# Open .env, paste your keys (see the table below) and save
+npm run dev                 # http://localhost:4000 — restarts automatically when .env is saved
 
-# 2) Web app — naya terminal
-cd sih-artisan-app/web
+# 2) Web app (terminal 2, from the folder you cloned into)
+cd Smart_India_Hackathon/sih-artisan-app/web
 npm install
-npm run dev                 # http://localhost:5173
+npm run dev                 # open http://localhost:5173
 ```
 
-| Key (`backend/.env`) | Kahan se milegi | Zaroori? |
+| Key (`backend/.env`) | Where to get it | Used for |
 |---|---|---|
-| `GEMINI_API_KEY` | https://aistudio.google.com → Get API key | AI voice / listing / photo pehchaan ke liye |
-| `REMOVE_BG_API_KEY` | https://www.remove.bg/api | Asli background removal (50 free/mahina) |
-| `CLOUDINARY_CLOUD_NAME`, `_API_KEY`, `_API_SECRET` | https://console.cloudinary.com → Dashboard | Photo storage/CDN |
-| `JWT_SECRET` | koi bhi lamba random text | haan |
+| `GEMINI_API_KEY` | https://aistudio.google.com → Get API key | Voice transcription, AI listing generation, product identification |
+| `REMOVE_BG_API_KEY` | https://www.remove.bg/api | Real background removal (50 free calls/month) |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | https://console.cloudinary.com → Dashboard | Photo storage / CDN. Use the short **Cloud name** shown on the dashboard, not your account name |
+| `JWT_SECRET` | Any long random string | Required |
 
-- **Bina kisi key ke bhi app chalta hai** (demo data + templates) — UI par kaam karne walon ko keys ki zaroorat nahi.
-- `backend/data.json` (local database) har member ki apni hoti hai, pehli baar server chalne par `src/seed.js` se khud banti hai. Reset karna ho to file delete karke `npm run seed`.
-- `web/.env` optional hai — sirf tab banao jab backend kisi aur URL par ho (`web/.env.example` dekho). **Web mein kabhi API keys mat daalo.**
+- **The app runs without any keys** (demo data + templates), so teammates working only on the UI don't need keys.
+- `backend/data.json` is each member's own local database. It is created automatically from `src/seed.js` the first time the server starts. To reset it, delete the file and run `npm run seed`.
+- `web/.env` is optional — create it only if the backend runs on a different URL (see `web/.env.example`). **Never put API keys in the web app** — everything in `web/` is shipped to the browser.
 - Demo logins: Artisan `9876543210`, Buyer `9123456780` (OTP `1234`), Admin `admin@shilpsaathi.gov.in` / `admin123`.
+- Port already in use (`EADDRINUSE`)? Close the other terminal running the server, or press `Ctrl+C` there.
+- After `git pull`, run `npm install` again in both `backend` and `web` in case dependencies changed.
 
 ---
 
