@@ -1,14 +1,14 @@
-# ShilpSaathi (शिल्प साथी)
+﻿# ShilpSaathi (à¤¶à¤¿à¤²à¥à¤ª à¤¸à¤¾à¤¥à¥€)
 
 **AI-Powered Digital Business Manager for Artisans & Micro-Entrepreneurs**  
-*Smart India Hackathon 2026 — Problem Statement SIH26090 — Team CODESPHERE*
+*Smart India Hackathon 2026 â€” Problem Statement SIH26090 â€” Team CODESPHERE*
 
 > **"Just Click. Just Speak. AI Handles the Rest."**  
 > Bridging the digital divide for rural Indian master artisans through voice-first, vernacular-enabled, automated AI cataloging, transparent pricing, and direct B2B buyer market linkage (zero intermediaries).
 
 ---
 
-## 🌟 Key Features
+## ðŸŒŸ Key Features
 
 1. **Voice-First & Vernacular UI**: Simplified experience designed for rural artisans speaking Hindi, English, and regional languages.
 2. **7-Step AI Pipeline**:
@@ -23,34 +23,34 @@
 
 ---
 
-## 📁 Modular Repository Architecture
+## ðŸ“ Modular Repository Architecture
 
 ```
 SIH_2026/
-├── image-enhancement/            # Module 01: Image Pre-processing, Studio Lighting & Cleanup
-│   └── src/ (algorithms, pipelines, presets) & tests/
-├── artisan-ui/                   # Module 02: Artisan Voice-First UI & 7-Step Onboarding Logic
-│   └── src/ (components, screens, hooks, navigation, assets)
-├── ai-catalogue-generator/       # Module 03: Multilingual Story & ONDC Catalogue Generator (Gemini + Bhashini)
-│   └── src/ (prompts, voice-transcription, translation, ondc-schema)
-├── ai-pricing-engine/            # Module 04: Fair Pricing Engine, Benchmarks & Floor Protection
-│   └── src/ (models, benchmarks, guardrails)
-├── buyer-marketplace-ui/         # Module 05: Buyer Discovery, Audio Storytelling & Negotiation Chat
-│   └── src/ (components, screens, negotiation, navigation)
-├── backend-api/                  # Module 06: Central Express API, Auth, Database & AI Orchestration
-│   └── src/ (controllers, routes, models, services, config)
-│
-├── sih-artisan-app/              # Integrated Working Prototype (Expo Mobile + Express Backend)
-│   ├── backend/                  # Working Node.js + Express API service (Port 4000)
-│   └── mobile/                   # Working React Native (Expo) mobile application
-├── CLAUDE.md                     # Complete technical architecture & AI guide
-├── SPEC.md                       # Comprehensive product specification
-└── README.md                     # Master project overview & quickstart
+â”œâ”€â”€ image-enhancement/            # Module 01: Image Pre-processing, Studio Lighting & Cleanup
+â”‚   â””â”€â”€ src/ (algorithms, pipelines, presets) & tests/
+â”œâ”€â”€ artisan-ui/                   # Module 02: Artisan Voice-First UI & 7-Step Onboarding Logic
+â”‚   â””â”€â”€ src/ (components, screens, hooks, navigation, assets)
+â”œâ”€â”€ ai-catalogue-generator/       # Module 03: Multilingual Story & ONDC Catalogue Generator (Gemini + Bhashini)
+â”‚   â””â”€â”€ src/ (prompts, voice-transcription, translation, ondc-schema)
+â”œâ”€â”€ ai-pricing-engine/            # Module 04: Fair Pricing Engine, Benchmarks & Floor Protection
+â”‚   â””â”€â”€ src/ (models, benchmarks, guardrails)
+â”œâ”€â”€ buyer-marketplace-ui/         # Module 05: Buyer Discovery, Audio Storytelling & Negotiation Chat
+â”‚   â””â”€â”€ src/ (components, screens, negotiation, navigation)
+â”œâ”€â”€ backend-api/                  # Module 06: Central Express API, Auth, Database & AI Orchestration
+â”‚   â””â”€â”€ src/ (controllers, routes, models, services, config)
+â”‚
+â”œâ”€â”€ sih-artisan-app/              # Integrated Working Prototype (Expo Mobile + Express Backend)
+â”‚   â”œâ”€â”€ backend/                  # Working Node.js + Express API service (Port 4000)
+â”‚   â””â”€â”€ mobile/                   # Working React Native (Expo) mobile application
+â”œâ”€â”€ CLAUDE.md                     # Complete technical architecture & AI guide
+â”œâ”€â”€ SPEC.md                       # Comprehensive product specification
+â””â”€â”€ README.md                     # Master project overview & quickstart
 ```
 
 ---
 
-### 🧩 Module Deep-Dives
+### ðŸ§© Module Deep-Dives
 
 | Module | Purpose & Pipeline Stage | Key Technologies |
 | :--- | :--- | :--- |
@@ -63,7 +63,7 @@ SIH_2026/
 
 ---
 
-## 🚀 Quick Start (Local Setup)
+## ðŸš€ Quick Start (Local Setup)
 
 ### Prerequisites
 - Node.js (v18+ recommended)
@@ -106,13 +106,13 @@ npx expo start
 
 ---
 
-## 👥 Team Setup (clone → apni keys → run)
+## ðŸ‘¥ Team Setup (clone â†’ apni keys â†’ run)
 
-> Har teammate **apni khud ki keys** use karta hai. `.env` files kabhi GitHub pe nahi jaati (`.gitignore` mein hain) — sirf `.env.example` templates repo mein hain.
+> Har teammate **apni khud ki keys** use karta hai. `.env` files kabhi GitHub pe nahi jaati (`.gitignore` mein hain) â€” sirf `.env.example` templates repo mein hain.
 
 ```bash
-git clone https://github.com/Anushri488/ShilpSathi.git
-cd ShilpSathi/sih-artisan-app
+git clone https://github.com/Swati89923/Smart_India_Hackathon.git
+cd Smart_India_Hackathon/sih-artisan-app
 
 # 1) Backend
 cd backend
@@ -121,7 +121,7 @@ cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
 # .env kholo aur apni keys daalo (neeche table dekho), save karo
 npm run dev                 # http://localhost:4000  (.env save karte hi auto-restart)
 
-# 2) Web app — naya terminal
+# 2) Web app â€” naya terminal
 cd sih-artisan-app/web
 npm install
 npm run dev                 # http://localhost:5173
@@ -129,19 +129,19 @@ npm run dev                 # http://localhost:5173
 
 | Key (`backend/.env`) | Kahan se milegi | Zaroori? |
 |---|---|---|
-| `GEMINI_API_KEY` | https://aistudio.google.com → Get API key | AI voice / listing / photo pehchaan ke liye |
+| `GEMINI_API_KEY` | https://aistudio.google.com â†’ Get API key | AI voice / listing / photo pehchaan ke liye |
 | `REMOVE_BG_API_KEY` | https://www.remove.bg/api | Asli background removal (50 free/mahina) |
-| `CLOUDINARY_CLOUD_NAME`, `_API_KEY`, `_API_SECRET` | https://console.cloudinary.com → Dashboard | Photo storage/CDN |
+| `CLOUDINARY_CLOUD_NAME`, `_API_KEY`, `_API_SECRET` | https://console.cloudinary.com â†’ Dashboard | Photo storage/CDN |
 | `JWT_SECRET` | koi bhi lamba random text | haan |
 
-- **Bina kisi key ke bhi app chalta hai** (demo data + templates) — UI par kaam karne walon ko keys ki zaroorat nahi.
+- **Bina kisi key ke bhi app chalta hai** (demo data + templates) â€” UI par kaam karne walon ko keys ki zaroorat nahi.
 - `backend/data.json` (local database) har member ki apni hoti hai, pehli baar server chalne par `src/seed.js` se khud banti hai. Reset karna ho to file delete karke `npm run seed`.
-- `web/.env` optional hai — sirf tab banao jab backend kisi aur URL par ho (`web/.env.example` dekho). **Web mein kabhi API keys mat daalo.**
+- `web/.env` optional hai â€” sirf tab banao jab backend kisi aur URL par ho (`web/.env.example` dekho). **Web mein kabhi API keys mat daalo.**
 - Demo logins: Artisan `9876543210`, Buyer `9123456780` (OTP `1234`), Admin `admin@shilpsaathi.gov.in` / `admin123`.
 
 ---
 
-## 🔬 Tech Stack
+## ðŸ”¬ Tech Stack
 
 - **Frontend / Mobile**: React Native, Expo, React Navigation, Lucide Icons
 - **Backend**: Node.js, Express.js, CORS, Multer
@@ -151,6 +151,7 @@ npm run dev                 # http://localhost:5173
 
 ---
 
-## 👥 Team CODESPHERE
+## ðŸ‘¥ Team CODESPHERE
 - **Event**: Smart India Hackathon 2026 (SIH 2026)
 - **Problem Statement**: SIH26090
+
