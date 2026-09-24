@@ -106,6 +106,41 @@ npx expo start
 
 ---
 
+## 👥 Team Setup (clone → apni keys → run)
+
+> Har teammate **apni khud ki keys** use karta hai. `.env` files kabhi GitHub pe nahi jaati (`.gitignore` mein hain) — sirf `.env.example` templates repo mein hain.
+
+```bash
+git clone https://github.com/Anushri488/ShilpSathi.git
+cd ShilpSathi/sih-artisan-app
+
+# 1) Backend
+cd backend
+npm install
+cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
+# .env kholo aur apni keys daalo (neeche table dekho), save karo
+npm run dev                 # http://localhost:4000  (.env save karte hi auto-restart)
+
+# 2) Web app — naya terminal
+cd sih-artisan-app/web
+npm install
+npm run dev                 # http://localhost:5173
+```
+
+| Key (`backend/.env`) | Kahan se milegi | Zaroori? |
+|---|---|---|
+| `GEMINI_API_KEY` | https://aistudio.google.com → Get API key | AI voice / listing / photo pehchaan ke liye |
+| `REMOVE_BG_API_KEY` | https://www.remove.bg/api | Asli background removal (50 free/mahina) |
+| `CLOUDINARY_CLOUD_NAME`, `_API_KEY`, `_API_SECRET` | https://console.cloudinary.com → Dashboard | Photo storage/CDN |
+| `JWT_SECRET` | koi bhi lamba random text | haan |
+
+- **Bina kisi key ke bhi app chalta hai** (demo data + templates) — UI par kaam karne walon ko keys ki zaroorat nahi.
+- `backend/data.json` (local database) har member ki apni hoti hai, pehli baar server chalne par `src/seed.js` se khud banti hai. Reset karna ho to file delete karke `npm run seed`.
+- `web/.env` optional hai — sirf tab banao jab backend kisi aur URL par ho (`web/.env.example` dekho). **Web mein kabhi API keys mat daalo.**
+- Demo logins: Artisan `9876543210`, Buyer `9123456780` (OTP `1234`), Admin `admin@shilpsaathi.gov.in` / `admin123`.
+
+---
+
 ## 🔬 Tech Stack
 
 - **Frontend / Mobile**: React Native, Expo, React Navigation, Lucide Icons

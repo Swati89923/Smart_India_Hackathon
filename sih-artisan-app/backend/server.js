@@ -7,12 +7,13 @@ const artisanRoutes = require("./src/routes/artisans");
 const productRoutes = require("./src/routes/products");
 const aiRoutes = require("./src/routes/ai");
 const enquiryRoutes = require("./src/routes/enquiries");
+const adminRoutes = require("./src/routes/admin");
 const { load, save, DB_PATH } = require("./src/db");
 const fs = require("fs");
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "25mb" }));
 
 // Auto-seed on first run so the API is demo-ready immediately.
 if (!fs.existsSync(DB_PATH)) {
@@ -28,6 +29,7 @@ app.use("/api/artisans", artisanRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/enquiries", enquiryRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use((req, res) => res.status(404).json({ error: "Not found" }));
 // eslint-disable-next-line no-unused-vars

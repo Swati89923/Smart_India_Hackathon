@@ -4,9 +4,11 @@ const {
   translateText,
   generateCatalogue,
   enhanceImage,
+  identifyProduct,
 } = require("../services/nlpCatalogue");
 const { recommendPrice } = require("../services/pricingModel");
-const { isGeminiConfigured } = require("../services/geminiService");
+const { isGeminiConfigured, geminiModel } = require("../services/geminiService");
+const { isRemoveBgConfigured, isCloudinaryConfigured } = require("../services/imageService");
 
 const router = express.Router();
 
@@ -14,7 +16,9 @@ const router = express.Router();
 router.get("/status", (req, res) => {
   res.json({
     geminiConfigured: isGeminiConfigured(),
-    model: isGeminiConfigured() ? "gemini-3.6-flash" : "local-template-fallback",
+    removeBgConfigured: isRemoveBgConfigured(),
+    cloudinaryConfigured: isCloudinaryConfigured(),
+    model: isGeminiConfigured() ? geminiModel() : "local-template-fallback",
     capabilities: [
       "multimodal_catalogue_generation",
       "image_quality_analysis",
@@ -27,24 +31,44 @@ router.get("/status", (req, res) => {
 // Step 2 — Enhance Image (Image AI: background removal + quality check)
 router.post("/enhance", async (req, res, next) => {
   try {
-    const { craft, imageBase64 } = req.body;
-    const result = await enhanceImage({ craft, imageBase64 });
+    const { craft, imageBase64, identify } = req.body;
+    const result = await enhanceImage({ craft, imageBase64, identify: identify !== false });
     res.json(result);
   } catch (err) {
     next(err);
   }
 });
 
+// Identify the product in a photo (Gemini vision) — Body: { craft, imageBase64 }
+router.post("/identify", async (req, res, next) => {
+  try {
+    const { craft, imageBase64 } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: "imageBase64 is required" });
+    res.json((await identifyProduct({ craft, imageBase64 })) || { source: "unavailable" });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Step 3 — Describe by Voice (Speech-to-Text: regional-language voice input)
-router.post("/transcribe", (req, res) => {
-  const { craft } = req.body;
-  res.json(transcribeVoiceNote({ craft }));
+// Body: { craft, audioBase64?, mimeType?, languageHint?, text? }
+router.post("/transcribe", async (req, res, next) => {
+  try {
+    const { craft, audioBase64, mimeType, languageHint, text } = req.body;
+    res.json(await transcribeVoiceNote({ craft, audioBase64, mimeType, languageHint, text }));
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Optional helper used by the "show English translation" toggle
-router.post("/translate", (req, res) => {
-  const { text, craft } = req.body;
-  res.json(translateText({ text, craft }));
+router.post("/translate", async (req, res, next) => {
+  try {
+    const { text, craft } = req.body;
+    res.json(await translateText({ text, craft }));
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Step 4 — Generate Catalogue (Multimodal VLM: image + voice -> rich bilingual listing)

@@ -35,6 +35,9 @@ router.post("/", (req, res) => {
     askingPrice,
     initialOfferPrice,
     initialMessage,
+    requiredBy,
+    budgetMin,
+    budgetMax,
   } = req.body;
 
   if (!artisanId || !productTitle || !askingPrice) {
@@ -59,6 +62,9 @@ router.post("/", (req, res) => {
     productTitle,
     quantity: qty,
     askingPrice: ask,
+    budgetMin: budgetMin != null && budgetMin !== "" ? Number(budgetMin) : null,
+    budgetMax: budgetMax != null && budgetMax !== "" ? Number(budgetMax) : null,
+    requiredBy: requiredBy || null,
     status: offer ? "negotiating" : "open",
     createdAt: new Date().toISOString(),
     thread: [

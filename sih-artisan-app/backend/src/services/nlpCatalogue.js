@@ -66,21 +66,40 @@ const TITLE_HI = {
 
 const {
   generateMultimodalCatalogue,
-  analyzeAndEnhanceImage,
+  analyzeProductImage,
   translateArtisanText,
+  transcribeAudio,
 } = require("./geminiService");
+const { enhanceProductPhoto } = require("./imageService");
 
-function transcribeVoiceNote({ craft = "pottery", text = null }) {
-  if (text && text.trim()) {
-    return {
-      transcriptHi: text.trim(),
-      confidence: 0.98,
-    };
+/**
+ * Speech-to-text. With a recorded audio clip + Gemini configured this is a
+ * real, full transcription (Hindi / English / mixed); otherwise it falls
+ * back to typed text or the demo transcript for the craft.
+ */
+async function transcribeVoiceNote({ craft = "pottery", text = null, audioBase64 = null, mimeType, languageHint } = {}) {
+  if (audioBase64) {
+    const ai = await transcribeAudio({ audioBase64, mimeType, languageHint, craft });
+    if (ai && ai.transcript) {
+      return {
+        transcriptHi: ai.transcript, // kept for older clients: the transcript in the language spoken
+        transcript: ai.transcript,
+        english: ai.english,
+        hindi: ai.hindi,
+        language: ai.language,
+        confidence: 0.95,
+        source: ai.source,
+      };
+    }
+    if (ai && !ai.transcript) {
+      return { transcriptHi: "", transcript: "", english: "", hindi: "", confidence: 0, source: ai.source, empty: true };
+    }
   }
-  return {
-    transcriptHi: SAMPLE_TRANSCRIPTS[craft] || SAMPLE_TRANSCRIPTS.pottery,
-    confidence: 0.93,
-  };
+  if (text && text.trim()) {
+    return { transcriptHi: text.trim(), transcript: text.trim(), confidence: 0.98, source: "typed" };
+  }
+  const sample = SAMPLE_TRANSCRIPTS[craft] || SAMPLE_TRANSCRIPTS.pottery;
+  return { transcriptHi: sample, transcript: sample, english: EN_TEMPLATES[craft] || EN_TEMPLATES.pottery, confidence: 0.93, source: "demo-sample" };
 }
 
 async function translateText({ text, craft = "pottery" }) {
@@ -130,19 +149,49 @@ async function generateCatalogue({
   };
 }
 
-async function enhanceImage({ craft = "pottery", imageBase64 = null } = {}) {
-  const aiEnhance = await analyzeAndEnhanceImage({ craft, imageBase64 });
-  if (aiEnhance) {
-    return aiEnhance;
+/**
+ * Real enhancement (remove.bg + Cloudinary). Set `identify: true` to also run
+ * Gemini product identification in the same call (slower); the web client
+ * calls identifyProduct separately so the clean photo shows up sooner.
+ */
+async function enhanceImage({ craft = "pottery", imageBase64 = null, identify = true } = {}) {
+  if (imageBase64) {
+    const [photo, analysis] = await Promise.all([
+      enhanceProductPhoto(imageBase64),
+      identify ? identifyProduct({ craft, imageBase64 }) : null,
+    ]);
+    if (photo.enhancedImageUrl || analysis) {
+      return {
+        ...photo,
+        ...(analysis || {}),
+        source: [photo.backgroundRemoved && "remove.bg", photo.stored && "cloudinary", analysis && analysis.source].filter(Boolean).join(" + ") || "local",
+      };
+    }
   }
 
   return {
-    enhancedImageUrl: `https://picsum.photos/seed/${craft}-${Date.now()}/700/500`,
-    tags: ["background_removed", "lighting_fixed", "cropped_to_market_format"],
+    enhancedImageUrl: null,
+    tags: ["lighting_fixed", "cropped_to_market_format"],
     lighting: "good",
     source: "local-filter",
   };
 }
 
-module.exports = { transcribeVoiceNote, translateText, generateCatalogue, enhanceImage };
+/** Gemini: what is in the photo + photo-quality tip. Returns null without Gemini. */
+async function identifyProduct({ craft = "pottery", imageBase64 }) {
+  const a = await analyzeProductImage({ imageBase64, craft });
+  if (!a) return null;
+  return {
+    lighting: a.lighting || null,
+    artisanTip: a.artisanTip || "",
+    identified: a.identified || "",
+    identifiedHi: a.identifiedHi || "",
+    detectedCraft: a.craft || null,
+    materials: a.materials || "",
+    colors: a.colors || [],
+    isProductPhoto: a.isProductPhoto ?? true,
+    source: a.source,
+  };
+}
 
+module.exports = { transcribeVoiceNote, translateText, generateCatalogue, enhanceImage, identifyProduct };

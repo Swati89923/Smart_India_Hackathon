@@ -12,6 +12,8 @@ function enrichProduct(product, artisans = []) {
     artisanName: artisan.name || "Master Artisan",
     artisanLocation: artisan.location || "India",
     artisanPhone: artisan.phone || "",
+    artisanState: artisan.state || "",
+    artisanBio: artisan.bio || "",
     pehchanId: artisan.pehchanId || "PEHCHAN-VERIFIED",
     kycVerified: artisan.kycVerified ?? true,
   };
@@ -22,9 +24,11 @@ router.get("/", (req, res) => {
   const { artisanId, craft, search } = req.query;
   const data = load();
   const artisans = data.artisans || [];
+  // Storefront shows all of an artisan's items; the public marketplace
+  // only shows published ones (admin can hold items as "pending").
   let products = artisanId
     ? (data.products || []).filter((p) => p.artisanId === artisanId)
-    : (data.products || []);
+    : (data.products || []).filter((p) => (p.status || "published") === "published");
 
   if (craft && craft !== "all") {
     products = products.filter((p) => (p.craft || "").toLowerCase() === craft.toLowerCase());
@@ -32,8 +36,10 @@ router.get("/", (req, res) => {
 
   if (search) {
     const s = search.toLowerCase();
+    const artisanName = (p) => ((artisans.find((a) => a.id === p.artisanId) || {}).name || "").toLowerCase();
     products = products.filter(
       (p) =>
+        artisanName(p).includes(s) ||
         (p.title && p.title.toLowerCase().includes(s)) ||
         (p.titleHi && p.titleHi.includes(s)) ||
         (p.category && p.category.toLowerCase().includes(s)) ||
@@ -62,6 +68,9 @@ router.post("/", (req, res) => {
     craft,
     category,
     price,
+    priceMin,
+    priceMax,
+    material,
     imageUrl,
   } = req.body;
 
@@ -80,6 +89,9 @@ router.post("/", (req, res) => {
     craft: craft || "pottery",
     category: category || "Handicraft",
     price,
+    priceMin: priceMin || null,
+    priceMax: priceMax || null,
+    material: material || "",
     imageUrl: imageUrl || "https://picsum.photos/seed/newitem/600/450",
     views: 0,
     status: "published",

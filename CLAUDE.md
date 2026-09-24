@@ -339,3 +339,30 @@ The visual design is specifically crafted to evoke Indian artisan heritage, natu
 3. **AI Stubs vs Production Model Boundary**: Every mock in `backend/src/services/` (`nlpCatalogue.js`, `pricingModel.js`) is designed to match the exact input/output signature of future production models (Whisper/Bhashini, Gemini/GPT-4o, regression models). Do not alter service signatures without updating both the router and the mobile caller.
 4. **Artisan Agency Principle**: AI never automatically sends counter-offers or publishes products without explicit human confirmation by the artisan.
 5. **Bilingual Requirement**: All generated catalogue items, buttons, and navigation must include both Hindi and English context to remain accessible to rural artisans.
+
+---
+
+## 11. Web App (`sih-artisan-app/web/`) & Admin API
+
+- **Web client**: React 19 + Vite + react-router + lucide-react. `npm run dev` → http://localhost:5173. See `web/README.md`.
+  - `src/api.js` mirrors every backend endpoint with an offline in-memory fallback (`src/sampleData.js` = copy of `seed.js`). Keep both in sync with `backend/src/seed.js` and `mobile/src/api.js`.
+  - Areas: `/artisan/*` (sidebar dashboard + AI wizard), `/market/*` + `/buyer/*` (buyer marketplace), `/admin/*` (admin console). One session per role in localStorage; header role switcher.
+- **Admin API** (`backend/src/routes/admin.js`, demo creds `admin@shilpsaathi.gov.in` / `admin123`, override with `ADMIN_EMAIL` / `ADMIN_PASSWORD`):
+  - `POST /api/admin/login`, `GET /api/admin/overview`, `GET /api/admin/artisans`, `PATCH /api/admin/artisans/:id {status}`,
+    `GET /api/admin/products`, `PATCH /api/admin/products/:id {status}`, `GET|PUT /api/admin/settings {announcement, categories}`.
+- **Data additions**: artisans have `state`, `bio`, `status` (active | pending | suspended); products have `material`, `priceMin`, `priceMax`, `status` (published | pending | hidden — marketplace `GET /api/products` without `artisanId` returns only published); enquiries accept `budgetMin`, `budgetMax`, `requiredBy`.
+
+---
+
+## 12. Real AI pipeline (keys in `backend/.env` only — see `backend/.env.example`)
+
+| Step | Endpoint | Service | Fallback without key |
+|---|---|---|---|
+| Photo enhance | `POST /api/ai/enhance {craft, imageBase64, identify?}` | remove.bg (background) + Cloudinary (store, square pad, auto-improve) — `src/services/imageService.js` | browser canvas levels/crop |
+| Identify product | `POST /api/ai/identify {craft, imageBase64}` | Gemini vision (`analyzeProductImage`) | none (UI hides it) |
+| Voice → text | `POST /api/ai/transcribe {craft, audioBase64, mimeType, languageHint}` | Gemini audio (`transcribeAudio`) — returns `transcript`, `english`, `hindi`, `language` | demo transcript per craft |
+| Listing | `POST /api/ai/catalogue {craft, imageBase64, voiceTranscript}` | Gemini multimodal | craft templates |
+
+- Web records audio with MediaRecorder and uploads 16 kHz mono WAV (`web/src/audioTools.js`); the old `{craft}`-only calls still work for mobile.
+- `geminiService.js` tries `GEMINI_MODEL` then `GEMINI_FALLBACK_MODELS`, skipping a busy model for 2 min; per-task `thinkingLevel` (identify = minimal, transcribe/catalogue = low) keeps replies ~3-5 s.
+- Never put keys in `web/` (anything there ships to the browser).

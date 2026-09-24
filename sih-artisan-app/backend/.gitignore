@@ -1,0 +1,4 @@
+node_modules
+.env
+# Local prototype database — each teammate gets their own (auto-created from src/seed.js on first run)
+data.json

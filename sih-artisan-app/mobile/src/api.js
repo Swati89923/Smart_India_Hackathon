@@ -67,7 +67,7 @@ export const SAMPLE_MARKETPLACE_PRODUCTS = [
     craft: "pottery",
     category: "Home Decor",
     price: 650,
-    imageUrl: "https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=600&auto=format&fit=crop&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600&auto=format&fit=crop&q=80",
     views: 214,
   },
   {
@@ -84,7 +84,7 @@ export const SAMPLE_MARKETPLACE_PRODUCTS = [
     craft: "weaving",
     category: "Textile",
     price: 1250,
-    imageUrl: "https://images.unsplash.com/photo-1606760227091-3dd870d97f1d?w=600&auto=format&fit=crop&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1594040226829-7f251ab46d80?w=600&auto=format&fit=crop&q=80",
     views: 185,
   },
   {
@@ -101,7 +101,7 @@ export const SAMPLE_MARKETPLACE_PRODUCTS = [
     craft: "pottery",
     category: "Kitchen & Dining",
     price: 450,
-    imageUrl: "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?w=600&auto=format&fit=crop&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1493106641515-6b5631de4bb9?w=600&auto=format&fit=crop&q=80",
     views: 94,
   },
   {
@@ -118,7 +118,7 @@ export const SAMPLE_MARKETPLACE_PRODUCTS = [
     craft: "painting",
     category: "Wall Art",
     price: 1800,
-    imageUrl: "https://images.unsplash.com/photo-1582561424760-0321d75e81fa?w=600&auto=format&fit=crop&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=600&auto=format&fit=crop&q=80",
     views: 310,
   },
 ];

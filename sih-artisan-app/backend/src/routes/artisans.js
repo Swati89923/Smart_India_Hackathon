@@ -6,7 +6,7 @@ const router = express.Router();
 // Complete/update onboarding profile
 router.put("/:id", (req, res) => {
   const { id } = req.params;
-  const { name, craft, location, pehchanId, language } = req.body;
+  const { name, craft, location, state, bio, pehchanId, language } = req.body;
   const data = load();
   const artisan = data.artisans.find((a) => a.id === id);
   if (!artisan) return res.status(404).json({ error: "Artisan not found" });
@@ -14,6 +14,8 @@ router.put("/:id", (req, res) => {
   if (name !== undefined) artisan.name = name;
   if (craft !== undefined) artisan.craft = craft;
   if (location !== undefined) artisan.location = location;
+  if (state !== undefined) artisan.state = state;
+  if (bio !== undefined) artisan.bio = bio;
   if (pehchanId !== undefined) artisan.pehchanId = pehchanId; // optional, minimal-field onboarding
   if (language !== undefined) artisan.language = language;
   artisan.kycVerified = !!(artisan.name && artisan.craft && artisan.location);
