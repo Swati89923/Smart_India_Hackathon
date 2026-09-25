@@ -2,30 +2,53 @@
   "expo": {
     "name": "ShilpSaathi",
     "slug": "shilpsaathi",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "splash": {
-      "backgroundColor": "#F6F0E1"
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
       "supportsTablet": false,
+      "bundleIdentifier": "in.shilpsaathi.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "ShilpSaathi needs camera access so you can photograph your products.",
-        "NSMicrophoneUsageDescription": "ShilpSaathi needs microphone access so you can describe products by voice."
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {
+      "package": "in.shilpsaathi.app",
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO"
       ]
     },
+    "web": {
+      "bundler": "metro"
+    },
     "plugins": [
-      "expo-font"
+      "expo-status-bar",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "ShilpSaathi needs microphone access so you can describe products by voice."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "ShilpSaathi needs camera access so you can photograph your products.",
+          "photosPermission": "ShilpSaathi needs gallery access so you can choose product photos."
+        }
+      ],
+      "expo-font",
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ]
   }
 }

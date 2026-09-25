@@ -1,34 +1,49 @@
-export const COLORS = {
-  paper: "#F6F0E1",
-  paperDeep: "#EFE6D2",
-  card: "#FFFDF7",
-  ink: "#2B2A28",
-  inkSoft: "#5B5648",
-  indigo: "#2E4A63",
-  indigoDeep: "#1F3345",
-  terracotta: "#BD5B3A",
-  terracottaDeep: "#9C4429",
-  turmeric: "#DDA02E",
-  leaf: "#4C7A57",
-  border: "#E3D6B8",
+// Design tokens — same palette as web/src/styles.css (SIH26090 mockup):
+// green = artisan / primary, blue = buyer, navy = headings, saffron accent on warm cream.
+export const C = {
+  green: "#2F7D4A",
+  greenDark: "#24663B",
+  greenSoft: "#E7F3EA",
+  blue: "#1F5FBF",
+  blueDark: "#174A96",
+  blueSoft: "#E8F0FB",
+  orange: "#E07A2E",
+  orangeSoft: "#FDF0E3",
+  red: "#D9463B",
+  redSoft: "#FCEBEA",
+  teal: "#13908F",
+  tealSoft: "#E3F4F4",
+  purple: "#7C4DCC",
+  purpleSoft: "#F1EBFB",
+  navy: "#1F3A6B",
+  brown: "#8B3A1A",
+  bg: "#FBF8F3",
+  bgWarm: "#FDF3E7",
+  bgBlue: "#F5F8FC",
+  card: "#FFFFFF",
+  border: "#E7E1D7",
+  borderStrong: "#D6CEBF",
+  ink: "#1E2A36",
+  muted: "#6B7280",
   white: "#FFFFFF",
 };
 
-export const CRAFTS = [
-  { key: "pottery", en: "Pottery", hi: "मिट्टी के बर्तन", icon: "hammer" },
-  { key: "weaving", en: "Weaving", hi: "बुनाई", icon: "tshirt-crew" },
-  { key: "painting", en: "Painting", hi: "चित्रकला", icon: "palette" },
-  { key: "jewelry", en: "Jewelry", hi: "आभूषण", icon: "diamond-stone" },
-  { key: "woodwork", en: "Woodwork", hi: "लकड़ी का काम", icon: "toolbox" },
-  { key: "embroidery", en: "Embroidery", hi: "कढ़ाई", icon: "content-cut" },
-];
+export const TONES = {
+  green: { bg: C.greenSoft, fg: C.greenDark },
+  blue: { bg: C.blueSoft, fg: C.blueDark },
+  orange: { bg: C.orangeSoft, fg: "#A8541A" },
+  red: { bg: C.redSoft, fg: "#B3342A" },
+  gray: { bg: "#F0EEEA", fg: "#57534E" },
+  teal: { bg: C.tealSoft, fg: C.teal },
+  purple: { bg: C.purpleSoft, fg: C.purple },
+};
 
-export const STEP_CONFIG = [
-  { id: 1, en: "Capture", icon: "camera" },
-  { id: 2, en: "Enhance", icon: "auto-fix" },
-  { id: 3, en: "Voice", icon: "microphone" },
-  { id: 4, en: "Catalogue", icon: "file-document-outline" },
-  { id: 5, en: "Price", icon: "currency-inr" },
-  { id: 6, en: "Publish", icon: "storefront-outline" },
-  { id: 7, en: "Connect", icon: "handshake-outline" },
-];
+export const R = { sm: 8, md: 12, lg: 16, pill: 999 };
+
+export const shadow = {
+  shadowColor: "#1E2A36",
+  shadowOpacity: 0.06,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 3 },
+  elevation: 2,
+};

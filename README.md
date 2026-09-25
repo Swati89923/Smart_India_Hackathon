@@ -127,6 +127,11 @@ npm run dev                 # http://localhost:4000 — restarts automatically w
 cd Smart_India_Hackathon/sih-artisan-app/web
 npm install
 npm run dev                 # open http://localhost:5173
+
+# 3) Mobile app (optional, terminal 3) — install "Expo Go" on your phone, same Wi-Fi as the laptop
+cd Smart_India_Hackathon/sih-artisan-app/mobile
+npm install
+npx expo start              # scan the QR code with Expo Go
 ```
 
 | Key (`backend/.env`) | Where to get it | Used for |

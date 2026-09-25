@@ -366,3 +366,13 @@ The visual design is specifically crafted to evoke Indian artisan heritage, natu
 - Web records audio with MediaRecorder and uploads 16 kHz mono WAV (`web/src/audioTools.js`); the old `{craft}`-only calls still work for mobile.
 - `geminiService.js` tries `GEMINI_MODEL` then `GEMINI_FALLBACK_MODELS`, skipping a busy model for 2 min; per-task `thinkingLevel` (identify = minimal, transcribe/catalogue = low) keeps replies ~3-5 s.
 - Never put keys in `web/` (anything there ships to the browser).
+
+---
+
+## 13. Mobile App v2 (`sih-artisan-app/mobile/`, Expo SDK 57)
+
+- Rewritten to match the web design and features (artisan + buyer; admin stays web-only). See `mobile/README.md`.
+- Entry `index.js` → `App.js` (single stack whose screens switch on the active role; one saved session per role in AsyncStorage).
+- `src/api.js` mirrors `web/src/api.js` (same endpoints + offline fallbacks). Backend URL auto-derives from the Expo dev host (`http://<laptop-ip>:4000/api`), override with `EXPO_PUBLIC_API_BASE_URL`.
+- Voice: `expo-audio` records AAC (Android) / 16 kHz WAV (iOS) → `POST /api/ai/transcribe`. Photos: `expo-image-picker` + `expo-image-manipulator` (≤1600px JPEG) → `/api/ai/enhance` + `/api/ai/identify`.
+- When changing an endpoint or constant, update `web/src/*` and `mobile/src/*` together (constants.js and sampleData.js are copies).
