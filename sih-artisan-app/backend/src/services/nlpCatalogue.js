@@ -67,6 +67,7 @@ const TITLE_HI = {
 const {
   generateMultimodalCatalogue,
   analyzeProductImage,
+  locateProduct,
   translateArtisanText,
   transcribeAudio,
 } = require("./geminiService");
@@ -154,17 +155,21 @@ async function generateCatalogue({
  * Gemini product identification in the same call (slower); the web client
  * calls identifyProduct separately so the clean photo shows up sooner.
  */
-async function enhanceImage({ craft = "pottery", imageBase64 = null, identify = true } = {}) {
+async function enhanceImage({ craft = "pottery", imageBase64 = null, identify = true, description = "" } = {}) {
   if (imageBase64) {
+    // With the artisan's description, first find where their product is in the photo
+    const located = description && description.trim() ? await locateProduct({ imageBase64, description, craft }) : null;
+    console.info(`[enhance] description ${description ? description.length + " chars" : "missing"} → locate: ${!located ? "skipped/failed" : located.found ? `"${located.label}"` : "not found"}`);
     const [photo, analysis] = await Promise.all([
-      enhanceProductPhoto(imageBase64),
+      enhanceProductPhoto(imageBase64, { box: located?.found ? located.box : null }),
       identify ? identifyProduct({ craft, imageBase64 }) : null,
     ]);
     if (photo.enhancedImageUrl || analysis) {
       return {
         ...photo,
         ...(analysis || {}),
-        source: [photo.backgroundRemoved && "remove.bg", photo.stored && "cloudinary", analysis && analysis.source].filter(Boolean).join(" + ") || "local",
+        located: located?.found ? { label: located.label, box: located.box } : null,
+        source: [located?.found && "gemini-locate", photo.backgroundRemoved && "remove.bg", photo.stored && "cloudinary", analysis && analysis.source].filter(Boolean).join(" + ") || "local",
       };
     }
   }
@@ -178,8 +183,8 @@ async function enhanceImage({ craft = "pottery", imageBase64 = null, identify = 
 }
 
 /** Gemini: what is in the photo + photo-quality tip. Returns null without Gemini. */
-async function identifyProduct({ craft = "pottery", imageBase64 }) {
-  const a = await analyzeProductImage({ imageBase64, craft });
+async function identifyProduct({ craft = "pottery", imageBase64, description = "" }) {
+  const a = await analyzeProductImage({ imageBase64, craft, description });
   if (!a) return null;
   return {
     lighting: a.lighting || null,

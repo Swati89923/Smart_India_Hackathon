@@ -6,7 +6,8 @@ const {
   enhanceImage,
   identifyProduct,
 } = require("../services/nlpCatalogue");
-const { recommendPrice } = require("../services/pricingModel");
+const { recommendPrice, recommendMarketPrice } = require("../services/pricingModel");
+const { researchMarket } = require("../services/marketService");
 const { isGeminiConfigured, geminiModel } = require("../services/geminiService");
 const { isRemoveBgConfigured, isCloudinaryConfigured } = require("../services/imageService");
 
@@ -31,8 +32,8 @@ router.get("/status", (req, res) => {
 // Step 2 — Enhance Image (Image AI: background removal + quality check)
 router.post("/enhance", async (req, res, next) => {
   try {
-    const { craft, imageBase64, identify } = req.body;
-    const result = await enhanceImage({ craft, imageBase64, identify: identify !== false });
+    const { craft, imageBase64, identify, description } = req.body;
+    const result = await enhanceImage({ craft, imageBase64, identify: identify !== false, description });
     res.json(result);
   } catch (err) {
     next(err);
@@ -42,9 +43,9 @@ router.post("/enhance", async (req, res, next) => {
 // Identify the product in a photo (Gemini vision) — Body: { craft, imageBase64 }
 router.post("/identify", async (req, res, next) => {
   try {
-    const { craft, imageBase64 } = req.body;
+    const { craft, imageBase64, description } = req.body;
     if (!imageBase64) return res.status(400).json({ error: "imageBase64 is required" });
-    res.json((await identifyProduct({ craft, imageBase64 })) || { source: "unavailable" });
+    res.json((await identifyProduct({ craft, imageBase64, description })) || { source: "unavailable" });
   } catch (err) {
     next(err);
   }
@@ -87,11 +88,25 @@ router.post("/catalogue", async (req, res, next) => {
   }
 });
 
-// Step 5 — Recommend Price (Pricing Model: cost + market-trend data -> price range)
-router.post("/price", (req, res) => {
-  const { cost, craft } = req.body;
-  if (!cost) return res.status(400).json({ error: "cost is required" });
-  res.json(recommendPrice({ cost: Number(cost), craft }));
+// Step 5 — Recommend Price.
+// Body: { cost?, craft, title?, description?, material?, category? }
+// With product details → anchored to what similar items sell for online (Flipkart/Amazon/Meesho…),
+// never below cost + 15%. Without details → the transparent cost-plus formula (old behaviour).
+router.post("/price", async (req, res, next) => {
+  try {
+    const { cost, craft, title, description, material, category } = req.body;
+    const c = Number(cost) || 0;
+    if (!title) {
+      if (!c) return res.status(400).json({ error: "cost is required" });
+      return res.json(recommendPrice({ cost: c, craft }));
+    }
+    const market = await researchMarket({ title, description, craft, material, category });
+    const result = recommendMarketPrice({ cost: c, craft, market });
+    if (!result) return res.status(400).json({ error: "Enter your cost — market prices are unavailable right now" });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

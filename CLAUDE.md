@@ -358,13 +358,15 @@ The visual design is specifically crafted to evoke Indian artisan heritage, natu
 
 | Step | Endpoint | Service | Fallback without key |
 |---|---|---|---|
-| Photo enhance | `POST /api/ai/enhance {craft, imageBase64, identify?}` | remove.bg (background) + Cloudinary (store, square pad, auto-improve) — `src/services/imageService.js` | browser canvas levels/crop |
-| Identify product | `POST /api/ai/identify {craft, imageBase64}` | Gemini vision (`analyzeProductImage`) | none (UI hides it) |
+| Photo enhance | `POST /api/ai/enhance {craft, imageBase64, identify?, description?}` | Gemini `locateProduct` finds the described product → `sharp` crops to it → remove.bg (`type=product`) → Cloudinary (store, square pad, auto-improve) — `src/services/imageService.js` | browser canvas levels/crop |
+| Identify product | `POST /api/ai/identify {craft, imageBase64, description?}` | Gemini vision (`analyzeProductImage`) | none (UI hides it) |
 | Voice → text | `POST /api/ai/transcribe {craft, audioBase64, mimeType, languageHint}` | Gemini audio (`transcribeAudio`) — returns `transcript`, `english`, `hindi`, `language` | demo transcript per craft |
 | Listing | `POST /api/ai/catalogue {craft, imageBase64, voiceTranscript}` | Gemini multimodal | craft templates |
+| Price | `POST /api/ai/price {cost?, craft, title?, description?, material?, category?}` | `marketService.researchMarket`: SerpAPI Google Shopping → Gemini + Google Search (billed key) → Gemini estimate; `recommendMarketPrice` anchors to the market median, never below cost + 15% | cost × craft margin × trend (old formula) |
 
 - Web records audio with MediaRecorder and uploads 16 kHz mono WAV (`web/src/audioTools.js`); the old `{craft}`-only calls still work for mobile.
 - `geminiService.js` tries `GEMINI_MODEL` then `GEMINI_FALLBACK_MODELS`, skipping a busy model for 2 min; per-task `thinkingLevel` (identify = minimal, transcribe/catalogue = low) keeps replies ~3-5 s.
+- Wizard order (web + mobile): **Photo → Voice → Enhance → Details → Price → Publish** — the artisan's description is sent to enhance/identify so cluttered photos (laptop, bedsheet, hands) are cropped to the actual product before background removal.
 - Never put keys in `web/` (anything there ships to the browser).
 
 ---

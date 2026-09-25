@@ -13,8 +13,8 @@ import * as api from "../../api";
 
 const STEPS = [
   { en: "Photo", hi: "फ़ोटो" },
-  { en: "Enhance", hi: "सुधार" },
   { en: "Voice", hi: "आवाज़" },
+  { en: "Enhance", hi: "सुधार" },
   { en: "Details", hi: "विवरण" },
   { en: "Price", hi: "मूल्य" },
   { en: "Publish", hi: "प्रकाशित" },
@@ -93,6 +93,7 @@ function PhotoStep({ craft, setCraft, onPhoto }) {
 
 /* ---------------- Step 2: enhance ---------------- */
 const TAG_LABEL = {
+  focused_on_product: "Focused on your product",
   background_removed: "Background removed",
   cropped_to_product: "Cropped to product",
   lighting_fixed: "Lighting & colour corrected",
@@ -128,6 +129,9 @@ function EnhanceStep({ photos, analysis, busy, craft, onUseCraft, onRetake, onNe
             {tags.map((t) => <Badge key={t} tone="green">✓ {t}</Badge>)}
             {analysis?.lighting && <Badge tone="blue">Light: {analysis.lighting}</Badge>}
           </div>
+          {analysis?.located?.label && (
+            <p className="note-green"><Sparkles size={14} /> Aapki baat se dhoondha: <b>{analysis.located.label}</b> — baaki sab hata diya</p>
+          )}
           {analysis?.identified && (
             <div className="note-blue identify">
               <Sparkles size={15} />
@@ -143,7 +147,7 @@ function EnhanceStep({ photos, analysis, busy, craft, onUseCraft, onRetake, onNe
       )}
       <div className="step-actions">
         <Button variant="outline" icon={RotateCcw} onClick={onRetake}>Retake</Button>
-        <Button onClick={onNext} disabled={busy || !photos?.enhanced} icon={CheckCircle2}>Use Enhanced Image</Button>
+        <Button onClick={onNext} disabled={busy || !photos?.enhanced} icon={CheckCircle2}>Use & Generate Details</Button>
       </div>
     </Card>
   );
@@ -154,7 +158,7 @@ const SpeechRecognition = typeof window !== "undefined" && (window.SpeechRecogni
 const MAX_SECONDS = 180;
 const VOICE_OPTIONS = [{ code: "hi-en", label: "Hindi + English (mixed)" }, ...VOICE_LANGUAGES];
 
-function VoiceStep({ craft, voice, setVoice, onNext }) {
+function VoiceStep({ craft, photo, voice, setVoice, onNext }) {
   const [lang, setLang] = useState("hi-en");
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -241,8 +245,13 @@ function VoiceStep({ craft, voice, setVoice, onNext }) {
 
   return (
     <Card className="step-card">
-      <h2>Describe Your Product <small>अपने उत्पाद के बारे में बताइए</small></h2>
-      <p className="muted center">Speak freely in Hindi, English or both — what it is, the material, days of work, the story. AI will listen to all of it.</p>
+      <div className="voice-head">
+        {photo && <img src={photo} alt="Your product" className="voice-thumb" />}
+        <div>
+          <h2>Describe Your Product <small>अपने उत्पाद के बारे में बताइए</small></h2>
+          <p className="muted">Say what it is first (e.g. “crochet flower keychain”) — AI uses this to find your product in the photo and remove everything else. Then tell the material, days of work and the story.</p>
+        </div>
+      </div>
       <div className="voice-box">
         <button type="button" className={`mic ${recording ? "live" : ""}`} onClick={recording ? stop : start} disabled={processing} aria-label={recording ? "Stop recording" : "Start recording"}>
           {recording ? <Square size={30} /> : <Mic size={34} />}
@@ -273,7 +282,7 @@ function VoiceStep({ craft, voice, setVoice, onNext }) {
         </Field>
       </div>
       <div className="step-actions">
-        <Button onClick={onNext} disabled={!voice?.transcript?.trim() || processing || recording} icon={ArrowRight}>Generate Details with AI</Button>
+        <Button onClick={onNext} disabled={!voice?.transcript?.trim() || processing || recording} icon={Sparkles}>Enhance Photo with AI</Button>
       </div>
     </Card>
   );
@@ -316,51 +325,85 @@ function DetailsStep({ details, setDetails, busy, onRegenerate, onNext }) {
 }
 
 /* ---------------- Step 5: pricing ---------------- */
-function PriceStep({ craft, pricing, setPricing, onNext }) {
+function PriceStep({ craft, details, pricing, setPricing, onNext }) {
   const [busy, setBusy] = useState(false);
   const { raw, days, wage, other } = pricing.inputs;
   const cost = Number(raw || 0) + Number(days || 0) * Number(wage || 0) + Number(other || 0);
   const setInput = (k) => (e) => setPricing({ ...pricing, inputs: { ...pricing.inputs, [k]: e.target.value } });
 
+  // Market reference is looked up once per product; the backend caches it, so cost changes are cheap
   useEffect(() => {
-    if (!cost) return;
     const t = setTimeout(async () => {
       setBusy(true);
       try {
-        const s = await api.recommendPrice(cost, craft);
-        setPricing((p) => ({ ...p, suggestion: s, from: s.recommended, to: s.max, cost }));
+        const s = await api.recommendPrice(cost, craft, {
+          title: details?.title, description: details?.description, material: details?.materials, category: details?.category,
+        });
+        if (s?.recommended) setPricing((p) => ({ ...p, suggestion: s, from: s.recommended, to: s.max, cost }));
+        else setPricing((p) => ({ ...p, suggestion: s }));
+      } catch (e) {
+        setPricing((p) => ({ ...p, suggestion: { basis: e.message } }));
       } finally {
         setBusy(false);
       }
     }, 450);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cost, craft]);
+  }, [cost, craft, details?.title]);
 
   const s = pricing.suggestion;
+  const m = s?.market;
+  const sourceLabel = !m ? null : m.source === "google-shopping" ? "Live · Google Shopping" : m.source === "gemini-google-search" ? "Live · Google Search" : "AI estimate · not live";
   return (
     <Card className="step-card">
       <h2>Pricing Details <small>मूल्य निर्धारण</small></h2>
       <div className="grid-2 gap-lg">
         <div className="stack">
-          <Field label="Raw Material Cost (₹)"><div className="input-prefix"><span>₹</span><input type="number" min="0" value={raw} onChange={setInput("raw")} /></div></Field>
+          <p className="muted small">Enter what it cost you to make one piece — we compare it with what similar items sell for online, and never suggest a price below your cost.</p>
+          <Field label="Raw Material Cost (₹)"><div className="input-prefix"><span>₹</span><input type="number" min="0" value={raw} onChange={setInput("raw")} placeholder="e.g. 80" /></div></Field>
           <div className="grid-2">
-            <Field label="Labour / Days"><input type="number" min="0" value={days} onChange={setInput("days")} /></Field>
+            <Field label="Labour / Days"><input type="number" min="0" step="0.5" value={days} onChange={setInput("days")} placeholder="e.g. 0.5" /></Field>
             <Field label="Daily wage (₹)"><input type="number" min="0" value={wage} onChange={setInput("wage")} /></Field>
           </div>
-          <Field label="Other Expenses (₹)" hint="Packing, transport, tools"><div className="input-prefix"><span>₹</span><input type="number" min="0" value={other} onChange={setInput("other")} /></div></Field>
+          <Field label="Other Expenses (₹)" hint="Packing, transport, tools"><div className="input-prefix"><span>₹</span><input type="number" min="0" value={other} onChange={setInput("other")} placeholder="e.g. 20" /></div></Field>
         </div>
         <div className="price-box">
           <span className="muted small">Suggested Price Range</span>
-          <b className="price-big">{busy && !s ? "…" : s ? `${inr(s.min)} – ${inr(s.max)}` : "—"}</b>
+          <b className="price-big">{busy && !s ? "…" : s?.recommended ? `${inr(s.min)} – ${inr(s.max)}` : "—"}</b>
           <dl>
-            <div><dt>Estimated Production Cost</dt><dd>{inr(cost)}</dd></div>
-            <div><dt>AI recommended price</dt><dd>{s ? inr(s.recommended) : "—"}</dd></div>
-            <div><dt>Suggested Margin</dt><dd>{s ? `${inr(Math.max(0, s.min - cost))} – ${inr(Math.max(0, s.max - cost))}` : "—"}</dd></div>
+            <div><dt>Recommended price</dt><dd>{s?.recommended ? inr(s.recommended) : "—"}</dd></div>
+            <div><dt>Your production cost</dt><dd>{cost ? inr(cost) : "—"}</dd></div>
+            {s?.floor ? <div><dt>Your minimum (cost + 15%)</dt><dd>{inr(s.floor)}</dd></div> : null}
+            {s?.recommended && cost ? <div><dt>Your profit per piece</dt><dd>{inr(Math.max(0, s.recommended - cost))}</dd></div> : null}
           </dl>
           {s?.basis && <p className="tiny muted">{s.basis}</p>}
         </div>
       </div>
+
+      {m && (
+        <div className="market-box">
+          <div className="card-head">
+            <b>Market reference <span className="muted small">— similar products online</span></b>
+            <Badge tone={m.live ? "green" : "orange"}>{sourceLabel}</Badge>
+          </div>
+          <p className="small">Typical price <b>{inr(m.median)}</b> · most sell between <b>{inr(m.low)} – {inr(m.high)}</b></p>
+          {m.comparables?.length > 0 && (
+            <ul className="market-list">
+              {m.comparables.map((c, i) => (
+                <li key={i}>
+                  <span className="market-site">{c.site}</span>
+                  {c.url ? <a href={c.url} target="_blank" rel="noreferrer" className="grow">{c.title}</a> : <span className="grow">{c.title}</span>}
+                  <b>{inr(c.price)}</b>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!m.live && <p className="tiny muted">These are typical prices estimated by AI, not live listings. Add a SERPAPI_KEY (or enable Gemini billing) in backend/.env for live Flipkart/Amazon prices.</p>}
+          {m.sources?.length > 0 && <p className="tiny muted">Sources: {m.sources.map((x, i) => <a key={i} href={x.url} target="_blank" rel="noreferrer">{x.title || "link"}{i < m.sources.length - 1 ? ", " : ""}</a>)}</p>}
+        </div>
+      )}
+      {s?.warning && <p className="note-blue"><Sparkles size={14} /> {s.warning}</p>}
+
       <div className="grid-2">
         <Field label="Your price — from (₹)" hint="You can edit the price as per your choice · आप कीमत बदल सकते हैं">
           <input type="number" min="1" value={pricing.from ?? ""} onChange={(e) => setPricing({ ...pricing, from: e.target.value })} />
@@ -369,7 +412,7 @@ function PriceStep({ craft, pricing, setPricing, onNext }) {
           <input type="number" min="1" value={pricing.to ?? ""} onChange={(e) => setPricing({ ...pricing, to: e.target.value })} />
         </Field>
       </div>
-      {s && Number(pricing.from) < cost && <p className="form-error">Your price is below your production cost — you would lose money on each piece.</p>}
+      {cost > 0 && Number(pricing.from) > 0 && Number(pricing.from) < cost && <p className="form-error">Your price is below your production cost — you would lose money on each piece.</p>}
       <div className="step-actions">
         <Button onClick={onNext} disabled={!Number(pricing.from)} icon={ArrowRight}>Review & Publish</Button>
       </div>
@@ -430,7 +473,7 @@ export default function AddProduct() {
   const [voice, setVoice] = useState(null);
   const [details, setDetails] = useState(null);
   const [generating, setGenerating] = useState(false);
-  const [pricing, setPricing] = useState({ inputs: { raw: 300, days: 3, wage: DEFAULT_DAILY_WAGE, other: 200 }, suggestion: null, from: null, to: null });
+  const [pricing, setPricing] = useState({ inputs: { raw: "", days: "", wage: DEFAULT_DAILY_WAGE, other: "" }, suggestion: null, from: null, to: null });
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(null);
 
@@ -441,33 +484,46 @@ export default function AddProduct() {
   };
 
   const photoRun = useRef(0);
+
+  // Step 1 → 2: keep the photo, then ask the artisan to describe it
   const onPhoto = async (src) => {
-    const run = ++photoRun.current;
-    go(1);
-    setEnhancing(true);
-    setPhotos(null);
+    photoRun.current++;
     setAnalysis(null);
     try {
       const [upload, local] = await Promise.all([toUploadJpeg(src), enhancePhoto(src)]);
-      setPhotos({ original: local.original, upload });
-      const b64 = stripDataUrl(upload);
+      setPhotos({ original: local.original, upload, localEnhanced: local.enhanced });
+      go(1);
+    } catch {
+      toast("Could not read that photo — try another one", "red");
+    }
+  };
+
+  // Step 2 → 3: enhance using the artisan's description to find the product in the photo
+  const startEnhance = async () => {
+    const run = ++photoRun.current;
+    go(2);
+    setEnhancing(true);
+    setAnalysis(null);
+    setPhotos((p) => ({ ...p, enhanced: null }));
+    const b64 = stripDataUrl(photos.upload);
+    const description = [voice?.transcript, voice?.english].filter(Boolean).join(" / ");
+    try {
       // Identification runs in parallel and fills in when ready
-      api.identifyProduct(craft, b64).then((id) => {
+      api.identifyProduct(craft, b64, description).then((id) => {
         if (run === photoRun.current && id && id.source !== "unavailable") setAnalysis((a) => ({ ...(a || {}), ...id, source: [a?.source, id.source].filter(Boolean).join(" + ") }));
       }).catch(() => {});
-      const res = await api.enhanceImage(craft, b64, { identify: false });
-      let enhanced = local.enhanced;
+      const res = await api.enhanceImage(craft, b64, { identify: false, description });
+      let enhanced = photos.localEnhanced;
       if (res.enhancedImageUrl?.startsWith("http")) enhanced = res.enhancedImageUrl;
       // remove.bg worked but Cloudinary is not set up: square it in the browser
       else if (res.enhancedImageUrl?.startsWith("data:")) enhanced = await padToSquare(res.enhancedImageUrl);
       if (run !== photoRun.current) return;
-      setPhotos({ original: local.original, upload, enhanced });
-      setAnalysis((a) => ({ ...res, ...(a || {}), tags: res.tags, source: [res.source, a?.source].filter(Boolean).join(" + ") }));
+      setPhotos((p) => ({ ...p, enhanced }));
+      setAnalysis((a) => ({ ...res, ...(a || {}), tags: res.tags, located: res.located, source: [res.source, a?.source].filter(Boolean).join(" + ") }));
     } catch {
-      toast("Could not read that photo — try another one", "red");
-      go(0);
+      if (run === photoRun.current) setPhotos((p) => ({ ...p, enhanced: p.localEnhanced }));
     } finally {
-      setEnhancing(false);
+      if (run === photoRun.current) setEnhancing(false);
     }
   };
 
@@ -554,10 +610,10 @@ export default function AddProduct() {
       </div>
       <Stepper step={step} onJump={go} maxReached={maxReached} />
       {step === 0 && <PhotoStep craft={craft} setCraft={setCraft} onPhoto={onPhoto} />}
-      {step === 1 && <EnhanceStep photos={photos} analysis={analysis} busy={enhancing} craft={craft} onUseCraft={(c) => { setCraft(c); toast(`Craft set to ${craftLabel(c)}`); }} onRetake={() => go(0)} onNext={() => go(2)} />}
-      {step === 2 && <VoiceStep craft={craft} voice={voice} setVoice={setVoice} onNext={generate} />}
+      {step === 1 && <VoiceStep craft={craft} photo={photos?.original} voice={voice} setVoice={setVoice} onNext={startEnhance} />}
+      {step === 2 && <EnhanceStep photos={photos} analysis={analysis} busy={enhancing} craft={craft} onUseCraft={(c) => { setCraft(c); toast(`Craft set to ${craftLabel(c)}`); }} onRetake={() => go(0)} onNext={generate} />}
       {step === 3 && <DetailsStep details={details} setDetails={setDetails} busy={generating} onRegenerate={generate} onNext={() => go(4)} />}
-      {step === 4 && <PriceStep craft={craft} pricing={pricing} setPricing={setPricing} onNext={() => go(5)} />}
+      {step === 4 && <PriceStep craft={craft} details={details} pricing={pricing} setPricing={setPricing} onNext={() => go(5)} />}
       {step === 5 && <ReviewStep photos={photos} details={details} pricing={pricing} craft={craft} onEdit={() => go(3)} onPublish={publish} publishing={publishing} />}
     </div>
   );

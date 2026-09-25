@@ -152,16 +152,16 @@ export const aiStatus = () =>
   call("GET", "/ai/status", null, () => ({ geminiConfigured: false, removeBgConfigured: false, cloudinaryConfigured: false, model: "offline" }));
 
 /** Real enhancement: remove.bg + Cloudinary + Gemini identification (backend). */
-export const enhanceImage = (craft, imageBase64, { identify = true } = {}) =>
-  call("POST", "/ai/enhance", { craft, imageBase64, identify }, () => ({
+export const enhanceImage = (craft, imageBase64, { identify = true, description = "" } = {}) =>
+  call("POST", "/ai/enhance", { craft, imageBase64, identify, description }, () => ({
     enhancedImageUrl: null,
     tags: ["lighting_fixed", "cropped_to_market_format"],
     source: "local-filter",
   }), AI);
 
 /** Gemini vision: what product is in the photo (+ photo tip). */
-export const identifyProduct = (craft, imageBase64) =>
-  call("POST", "/ai/identify", { craft, imageBase64 }, () => ({ source: "unavailable" }), AI);
+export const identifyProduct = (craft, imageBase64, description = "") =>
+  call("POST", "/ai/identify", { craft, imageBase64, description }, () => ({ source: "unavailable" }), AI);
 
 /** Speech-to-text. Pass { audioBase64, mimeType, languageHint } for a real transcription. */
 export const transcribeVoice = (craft, audio = {}) =>
@@ -191,8 +191,10 @@ export const generateCatalogue = (craft, imageBase64, voiceTranscript = "") =>
     source: "local-template",
   }), AI);
 
-export const recommendPrice = (cost, craft) =>
-  call("POST", "/ai/price", { cost, craft }, () => {
+/** Price suggestion. Pass product details to anchor it to what similar items sell for online. */
+export const recommendPrice = (cost, craft, product = {}) =>
+  call("POST", "/ai/price", { cost, craft, ...product }, () => {
+    if (!cost) return { basis: "Enter your cost to get a price suggestion (market prices need the backend)." };
     const margin = CRAFT_MARGIN[craft] || 1.5;
     const trend = MARKET_TREND_INDEX[craft] || 1.0;
     const recommended = round5(cost * margin * trend);
@@ -202,9 +204,10 @@ export const recommendPrice = (cost, craft) =>
       min,
       recommended,
       max,
-      basis: `Cost ₹${cost} × craft margin (${margin}) × market-trend index (${trend}) for "${craft}". Similar items in this cluster sold in the ₹${min}–₹${max} range recently.`,
+      floor: round5(cost * 1.15),
+      basis: `Offline estimate: cost ₹${cost} × craft margin (${margin}) × market-trend index (${trend}). Connect the backend for market prices.`,
     };
-  });
+  }, AI);
 
 // ---- Products ------------------------------------------------------------------------
 export const listProducts = ({ artisanId, craft, search } = {}) =>

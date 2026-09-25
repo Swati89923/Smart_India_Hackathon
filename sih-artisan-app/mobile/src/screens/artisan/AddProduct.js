@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View, Alert } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View, Alert, Linking } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAudioRecorder, useAudioRecorderState, requestRecordingPermissionsAsync, setAudioModeAsync } from "expo-audio";
 import { C, shadow } from "../../theme";
@@ -9,13 +9,14 @@ import { CRAFTS, VOICE_LANGUAGES, DEFAULT_DAILY_WAGE, inr, craftLabel } from "..
 import { pickPhoto, prepareImage, RECORDING_OPTIONS, recordingMime, readAudioBase64 } from "../../media";
 import * as api from "../../api";
 
-const STEPS = [["Photo", "फ़ोटो"], ["Enhance", "सुधार"], ["Voice", "आवाज़"], ["Details", "विवरण"], ["Price", "मूल्य"], ["Publish", "प्रकाशित"]];
+const STEPS = [["Photo", "फ़ोटो"], ["Voice", "आवाज़"], ["Enhance", "सुधार"], ["Details", "विवरण"], ["Price", "मूल्य"], ["Publish", "प्रकाशित"]];
 const SAMPLE_PHOTOS = {
   pottery: "photo-1578749556568-bc2c40e68b61", weaving: "photo-1594040226829-7f251ab46d80",
   painting: "photo-1565193566173-7a0ee3dbe261", jewelry: "photo-1601121141461-9d6647bca1ed",
   woodwork: "photo-1611486212557-88be5ff6f941", embroidery: "photo-1616627561950-9f746e330187",
 };
 const TAG_LABEL = {
+  focused_on_product: "Focused on product",
   background_removed: "Background removed", cropped_to_product: "Cropped to product",
   lighting_fixed: "Lighting corrected", square_marketplace_format: "1:1 marketplace format",
   cropped_to_market_format: "Marketplace format",
@@ -108,6 +109,9 @@ function EnhanceStep({ photo, enhanced, analysis, busy, craft, onUseCraft, onRet
             {tags.map((t) => <Badge key={t} tone="green">✓ {t}</Badge>)}
             {analysis?.lighting ? <Badge tone="blue">Light: {analysis.lighting}</Badge> : null}
           </View>
+          {analysis?.located?.label ? (
+            <Note icon="crosshair">Aapki baat se dhoondha: {analysis.located.label} — baaki sab hata diya</Note>
+          ) : null}
           {analysis?.identified ? (
             <Note tone="blue" icon="star">AI ne pehchana: {analysis.identified}{analysis.identifiedHi ? ` · ${analysis.identifiedHi}` : ""}</Note>
           ) : null}
@@ -120,14 +124,14 @@ function EnhanceStep({ photo, enhanced, analysis, busy, craft, onUseCraft, onRet
       )}
       <Row>
         <Button style={{ flex: 1 }} variant="outline" icon="rotate-ccw" title="Retake" onPress={onRetake} />
-        <Button style={{ flex: 1.4 }} icon="check-circle" title="Use Enhanced" disabled={busy || !enhanced} onPress={onNext} />
+        <Button style={{ flex: 1.4 }} icon="check-circle" title="Use & Continue" disabled={busy || !enhanced} onPress={onNext} />
       </Row>
     </Card>
   );
 }
 
 /* ---------- Step 3: voice ---------- */
-function VoiceStep({ craft, voice, setVoice, onNext }) {
+function VoiceStep({ craft, photo, voice, setVoice, onNext }) {
   const toast = useToast();
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const state = useAudioRecorderState(recorder, 150);
@@ -184,8 +188,13 @@ function VoiceStep({ craft, voice, setVoice, onNext }) {
 
   return (
     <Card>
-      <H2>Describe Your Product</H2>
-      <Muted>अपने उत्पाद के बारे में बताइए — speak freely in Hindi, English or both. AI will listen to all of it.</Muted>
+      <Row style={{ alignItems: "flex-start" }}>
+        {photo ? <Image source={{ uri: photo.uri }} style={{ width: 64, height: 64, borderRadius: 10 }} /> : null}
+        <View style={{ flex: 1, gap: 2 }}>
+          <H2>Describe Your Product</H2>
+          <Muted>अपने उत्पाद के बारे में बताइए। Say what it is first (e.g. “crochet flower keychain”) — AI uses it to find your product in the photo and remove everything else.</Muted>
+        </View>
+      </Row>
       <View style={st.voiceBox}>
         <Pressable onPress={recording ? stop : start} disabled={processing} style={[st.mic, recording && { backgroundColor: C.red }]} accessibilityLabel={recording ? "Stop recording" : "Start recording"}>
           <Feather name={recording ? "square" : "mic"} size={34} color={C.white} />
@@ -207,7 +216,7 @@ function VoiceStep({ craft, voice, setVoice, onNext }) {
       <Field label={`What we heard (edit if needed)${voice?.language ? ` · ${voice.language}` : ""}`} multiline value={voice?.transcript || ""}
         onChangeText={(v) => setVoice({ ...(voice || {}), transcript: v })} placeholder="Or type your description here…" />
       <Field label="English translation" multiline value={voice?.english || ""} onChangeText={(v) => setVoice({ ...(voice || {}), english: v })} placeholder="Auto-translated after you speak" />
-      <Button icon="arrow-right" title="Generate Details with AI" disabled={!voice?.transcript?.trim() || processing || recording} onPress={onNext} />
+      <Button icon="zap" title="Enhance Photo with AI" disabled={!voice?.transcript?.trim() || processing || recording} onPress={onNext} />
     </Card>
   );
 }
@@ -245,52 +254,78 @@ function DetailsStep({ details, setDetails, busy, onRegenerate, onNext }) {
 }
 
 /* ---------- Step 5: price ---------- */
-function PriceStep({ craft, pricing, setPricing, onNext }) {
+function PriceStep({ craft, details, pricing, setPricing, onNext }) {
   const [busy, setBusy] = useState(false);
   const { raw, days, wage, other } = pricing.inputs;
   const cost = Number(raw || 0) + Number(days || 0) * Number(wage || 0) + Number(other || 0);
-  const setIn = (k) => (v) => setPricing((p) => ({ ...p, inputs: { ...p.inputs, [k]: v.replace(/\D/g, "") } }));
+  const setIn = (k) => (v) => setPricing((p) => ({ ...p, inputs: { ...p.inputs, [k]: v.replace(/[^\d.]/g, "") } }));
 
+  // Market reference is looked up once per product; the backend caches it, so cost changes are cheap
   useEffect(() => {
-    if (!cost) return;
     const t = setTimeout(async () => {
       setBusy(true);
       try {
-        const s = await api.recommendPrice(cost, craft);
-        setPricing((p) => ({ ...p, suggestion: s, from: String(s.recommended), to: String(s.max) }));
+        const s = await api.recommendPrice(cost, craft, {
+          title: details?.title, description: details?.description, material: details?.materials, category: details?.category,
+        });
+        if (s?.recommended) setPricing((p) => ({ ...p, suggestion: s, from: String(s.recommended), to: String(s.max) }));
+        else setPricing((p) => ({ ...p, suggestion: s }));
+      } catch (e) {
+        setPricing((p) => ({ ...p, suggestion: { basis: e.message } }));
       } finally {
         setBusy(false);
       }
     }, 450);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cost, craft]);
+  }, [cost, craft, details?.title]);
 
   const s = pricing.suggestion;
+  const m = s?.market;
+  const sourceLabel = !m ? null : m.source === "google-shopping" ? "Live · Google Shopping" : m.source === "gemini-google-search" ? "Live · Google Search" : "AI estimate · not live";
   return (
     <Card>
       <H2>Pricing Details</H2>
-      <Muted>मूल्य निर्धारण</Muted>
-      <Field label="Raw Material Cost (₹)" keyboardType="number-pad" value={String(raw)} onChangeText={setIn("raw")} />
+      <Muted>मूल्य निर्धारण · Enter what one piece cost you — we compare with similar items online and never go below your cost.</Muted>
+      <Field label="Raw Material Cost (₹)" keyboardType="decimal-pad" value={String(raw)} onChangeText={setIn("raw")} placeholder="e.g. 80" />
       <Row>
-        <Field style={{ flex: 1 }} label="Labour / Days" keyboardType="number-pad" value={String(days)} onChangeText={setIn("days")} />
+        <Field style={{ flex: 1 }} label="Labour / Days" keyboardType="decimal-pad" value={String(days)} onChangeText={setIn("days")} placeholder="e.g. 0.5" />
         <Field style={{ flex: 1 }} label="Daily wage (₹)" keyboardType="number-pad" value={String(wage)} onChangeText={setIn("wage")} />
       </Row>
-      <Field label="Other Expenses (₹)" hint="Packing, transport, tools" keyboardType="number-pad" value={String(other)} onChangeText={setIn("other")} />
+      <Field label="Other Expenses (₹)" hint="Packing, transport, tools" keyboardType="number-pad" value={String(other)} onChangeText={setIn("other")} placeholder="e.g. 20" />
       <View style={st.priceBox}>
         <Muted>Suggested Price Range</Muted>
-        <Text style={st.priceBig}>{busy && !s ? "…" : s ? `${inr(s.min)} – ${inr(s.max)}` : "—"}</Text>
-        <Row style={{ justifyContent: "space-between" }}><Body>Estimated Production Cost</Body><Body style={st.bold}>{inr(cost)}</Body></Row>
-        <Row style={{ justifyContent: "space-between" }}><Body>AI recommended price</Body><Body style={st.bold}>{s ? inr(s.recommended) : "—"}</Body></Row>
-        <Row style={{ justifyContent: "space-between" }}><Body>Suggested Margin</Body><Body style={st.bold}>{s ? `${inr(Math.max(0, s.min - cost))} – ${inr(Math.max(0, s.max - cost))}` : "—"}</Body></Row>
+        <Text style={st.priceBig}>{busy && !s ? "…" : s?.recommended ? `${inr(s.min)} – ${inr(s.max)}` : "—"}</Text>
+        <Row style={{ justifyContent: "space-between" }}><Body>Recommended price</Body><Body style={st.bold}>{s?.recommended ? inr(s.recommended) : "—"}</Body></Row>
+        <Row style={{ justifyContent: "space-between" }}><Body>Your production cost</Body><Body style={st.bold}>{cost ? inr(cost) : "—"}</Body></Row>
+        {s?.floor ? <Row style={{ justifyContent: "space-between" }}><Body>Your minimum (cost + 15%)</Body><Body style={st.bold}>{inr(s.floor)}</Body></Row> : null}
+        {s?.recommended && cost ? <Row style={{ justifyContent: "space-between" }}><Body>Profit per piece</Body><Body style={st.bold}>{inr(Math.max(0, s.recommended - cost))}</Body></Row> : null}
         {s?.basis ? <Muted style={{ fontSize: 12 }}>{s.basis}</Muted> : null}
       </View>
+      {m ? (
+        <View style={st.marketBox}>
+          <Row style={{ justifyContent: "space-between" }}>
+            <Text style={st.bold}>Market reference</Text>
+            <Badge tone={m.live ? "green" : "orange"}>{sourceLabel}</Badge>
+          </Row>
+          <Body>Typical <Text style={st.bold}>{inr(m.median)}</Text> · most sell for {inr(m.low)} – {inr(m.high)}</Body>
+          {(m.comparables || []).map((c, i) => (
+            <Pressable key={i} disabled={!c.url} onPress={() => c.url && Linking.openURL(c.url)} style={st.marketRow}>
+              <Text style={st.marketSite}>{c.site}</Text>
+              <Text style={[{ flex: 1, fontSize: 13, color: C.ink }, c.url && { color: C.blue }]} numberOfLines={1}>{c.title}</Text>
+              <Text style={st.bold}>{inr(c.price)}</Text>
+            </Pressable>
+          ))}
+          {!m.live ? <Muted style={{ fontSize: 11.5 }}>Typical prices estimated by AI, not live listings.</Muted> : null}
+        </View>
+      ) : null}
+      {s?.warning ? <Note tone="blue" icon="info">{s.warning}</Note> : null}
       <Row>
         <Field style={{ flex: 1 }} label="Your price from (₹)" keyboardType="number-pad" value={pricing.from ?? ""} onChangeText={(v) => setPricing({ ...pricing, from: v.replace(/\D/g, "") })} />
         <Field style={{ flex: 1 }} label="Up to (₹)" keyboardType="number-pad" value={pricing.to ?? ""} onChangeText={(v) => setPricing({ ...pricing, to: v.replace(/\D/g, "") })} />
       </Row>
       <Muted style={{ fontSize: 12 }}>You can edit the price as per your choice · आप कीमत बदल सकते हैं</Muted>
-      {s && Number(pricing.from) < cost ? <Note tone="red" icon="alert-triangle">Your price is below your production cost — you would lose money on each piece.</Note> : null}
+      {cost > 0 && Number(pricing.from) > 0 && Number(pricing.from) < cost ? <Note tone="red" icon="alert-triangle">Your price is below your production cost — you would lose money on each piece.</Note> : null}
       <Button icon="arrow-right" title="Review & Publish" disabled={!Number(pricing.from)} onPress={onNext} />
     </Card>
   );
@@ -344,26 +379,38 @@ export default function AddProductScreen({ navigation }) {
   const [voice, setVoice] = useState(null);
   const [details, setDetails] = useState(null);
   const [generating, setGenerating] = useState(false);
-  const [pricing, setPricing] = useState({ inputs: { raw: "300", days: "3", wage: String(DEFAULT_DAILY_WAGE), other: "200" }, suggestion: null, from: null, to: null });
+  const [pricing, setPricing] = useState({ inputs: { raw: "", days: "", wage: String(DEFAULT_DAILY_WAGE), other: "" }, suggestion: null, from: null, to: null });
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(null);
   const run = useRef(0);
 
-  const onPhoto = async (p) => {
-    const id = ++run.current;
+  // Step 1 → 2: keep the photo, then ask the artisan to describe it
+  const onPhoto = (p) => {
+    run.current++;
     setPhoto(p);
     setEnhanced(null);
     setAnalysis(null);
     setStep(1);
+  };
+
+  // Step 2 → 3: enhance using the artisan's description to find the product in the photo
+  const startEnhance = async () => {
+    const id = ++run.current;
+    setEnhanced(null);
+    setAnalysis(null);
+    setStep(2);
     setEnhancing(true);
-    api.identifyProduct(craft, p.base64).then((a) => {
+    const description = [voice?.transcript, voice?.english].filter(Boolean).join(" / ");
+    api.identifyProduct(craft, photo.base64, description).then((a) => {
       if (id === run.current && a && a.source !== "unavailable") setAnalysis((x) => ({ ...(x || {}), ...a }));
     }).catch(() => {});
     try {
-      const res = await api.enhanceImage(craft, p.base64, { identify: false });
+      const res = await api.enhanceImage(craft, photo.base64, { identify: false, description });
       if (id !== run.current) return;
-      setEnhanced(res.enhancedImageUrl || p.uri); // offline: keep the original
-      setAnalysis((x) => ({ ...res, ...(x || {}), tags: res.tags, source: res.source }));
+      setEnhanced(res.enhancedImageUrl || photo.uri); // offline: keep the original
+      setAnalysis((x) => ({ ...res, ...(x || {}), tags: res.tags, located: res.located, source: res.source }));
+    } catch {
+      if (id === run.current) setEnhanced(photo.uri);
     } finally {
       if (id === run.current) setEnhancing(false);
     }
@@ -438,14 +485,14 @@ export default function AddProductScreen({ navigation }) {
         <Pressable onPress={() => setStep(step - 1)}><Text style={st.link}>← Back to {STEPS[step - 1][0]}</Text></Pressable>
       )}
       {step === 0 && <PhotoStep craft={craft} setCraft={setCraft} onPhoto={onPhoto} />}
-      {step === 1 && photo && (
+      {step === 1 && <VoiceStep craft={craft} photo={photo} voice={voice} setVoice={setVoice} onNext={startEnhance} />}
+      {step === 2 && photo && (
         <EnhanceStep photo={photo} enhanced={enhanced} analysis={analysis} busy={enhancing} craft={craft}
           onUseCraft={(c) => { setCraft(c); toast(`Craft set to ${craftLabel(c)}`); }}
-          onRetake={() => setStep(0)} onNext={() => setStep(2)} />
+          onRetake={() => setStep(0)} onNext={generate} />
       )}
-      {step === 2 && <VoiceStep craft={craft} voice={voice} setVoice={setVoice} onNext={generate} />}
       {step === 3 && <DetailsStep details={details} setDetails={setDetails} busy={generating} onRegenerate={generate} onNext={() => setStep(4)} />}
-      {step === 4 && <PriceStep craft={craft} pricing={pricing} setPricing={setPricing} onNext={() => setStep(5)} />}
+      {step === 4 && <PriceStep craft={craft} details={details} pricing={pricing} setPricing={setPricing} onNext={() => setStep(5)} />}
       {step === 5 && <ReviewStep image={enhanced || photo?.uri} details={details} pricing={pricing} craft={craft} onEdit={() => setStep(3)} onPublish={publish} publishing={publishing} />}
     </Screen>
   );
@@ -474,5 +521,8 @@ const st = StyleSheet.create({
   priceBox: { backgroundColor: C.greenSoft, borderRadius: 12, borderWidth: 1, borderColor: "#C9E3D1", padding: 14, gap: 6 },
   priceBig: { fontSize: 26, fontWeight: "800", color: C.green },
   bold: { fontWeight: "800" },
+  marketBox: { borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 12, gap: 6, backgroundColor: "#FFFDF9" },
+  marketRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  marketSite: { fontSize: 11, fontWeight: "700", color: C.blueDark, backgroundColor: C.blueSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: "hidden" },
   reviewImg: { width: "100%", aspectRatio: 1, borderRadius: 12 },
 });

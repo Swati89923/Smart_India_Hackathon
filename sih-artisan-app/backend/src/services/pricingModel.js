@@ -75,4 +75,33 @@ function suggestNegotiationResponse({ askingPrice, offerPrice, quantity }) {
   };
 }
 
-module.exports = { recommendPrice, suggestNegotiationResponse };
+/**
+ * Market-anchored price: start from what similar products sell for online,
+ * but never below the artisan's cost + 15% (floor protection).
+ * `market` comes from services/marketService.researchMarket().
+ */
+const FLOOR_MARGIN = 1.15;
+
+function recommendMarketPrice({ cost = 0, craft = "pottery", market }) {
+  const round5 = (n) => Math.round(n / 5) * 5;
+  const floor = cost > 0 ? round5(cost * FLOOR_MARGIN) : 0;
+  if (!market) {
+    if (!cost) return null;
+    return { ...recommendPrice({ cost, craft }), floor, cost, market: null, method: "cost-formula" };
+  }
+  const recommended = Math.max(floor, market.median);
+  const min = Math.max(floor, market.low);
+  const max = Math.max(recommended, market.high);
+  const where = market.live ? "on online marketplaces right now" : "online in India (AI estimate)";
+  let basis = `Similar products sell for ₹${market.low}–₹${market.high} (typical ₹${market.median}) ${where}.`;
+  if (floor) basis += ` Your cost is ₹${cost}, so ₹${floor} is your minimum (15% margin).`;
+  let warning = null;
+  if (floor && floor > market.high) {
+    warning = `Your production cost (₹${cost}) is higher than what similar items usually sell for (up to ₹${market.high}). Highlight what makes yours special (handmade, material, design) or look for ways to reduce cost.`;
+  } else if (floor && floor > market.median) {
+    warning = `Your minimum price (₹${floor}) is above the typical market price (₹${market.median}) — buyers may compare, so describe the craftsmanship well.`;
+  }
+  return { min, recommended, max, basis, floor, cost, market, warning, method: "market" };
+}
+
+module.exports = { recommendPrice, recommendMarketPrice, suggestNegotiationResponse };

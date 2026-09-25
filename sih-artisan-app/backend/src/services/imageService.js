@@ -6,8 +6,13 @@
  *
  * Each step is optional: without REMOVE_BG_API_KEY the background is kept,
  * without Cloudinary the image is returned as a data URL.
+ *
+ * When Gemini has located the product (from the artisan's description), the
+ * photo is first cropped to that box so clutter around it (laptop, bedsheet,
+ * hands) never reaches remove.bg.
  */
 const cloudinary = require("cloudinary").v2;
+const sharp = require("sharp");
 
 const env = (k) => (process.env[k] || "").trim();
 const isRemoveBgConfigured = () => env("REMOVE_BG_API_KEY").length > 0;
@@ -38,6 +43,7 @@ async function removeBackground(imageBase64) {
   form.append("size", env("REMOVE_BG_SIZE") || "auto");
   form.append("format", "jpg");
   form.append("bg_color", BACKDROP);
+  form.append("type", "product");
   form.append("crop", "true");
   form.append("crop_margin", "8%");
   try {
@@ -81,14 +87,42 @@ const marketplaceUrl = (publicId, { improve = true } = {}) =>
   });
 
 /**
- * Full pipeline. Returns { originalUrl, enhancedImageUrl, tags, backgroundRemoved, stored }.
+ * Crop to a {x0,y0,x1,y1} box (0-1 fractions) plus a margin. Returns base64 JPEG, or null on failure.
  */
-async function enhanceProductPhoto(imageBase64) {
+async function cropToBox(imageBase64, box, margin = 0.08) {
+  try {
+    const input = Buffer.from(cleanBase64(imageBase64), "base64");
+    const img = sharp(input).rotate(); // honour EXIF orientation from phone cameras
+    const { width, height } = await img.metadata();
+    const mx = (box.x1 - box.x0) * margin;
+    const my = (box.y1 - box.y0) * margin;
+    const left = Math.max(0, Math.floor((box.x0 - mx) * width));
+    const top = Math.max(0, Math.floor((box.y0 - my) * height));
+    const right = Math.min(width, Math.ceil((box.x1 + mx) * width));
+    const bottom = Math.min(height, Math.ceil((box.y1 + my) * height));
+    if (right - left < 32 || bottom - top < 32) return null;
+    const out = await img.extract({ left, top, width: right - left, height: bottom - top }).jpeg({ quality: 92 }).toBuffer();
+    return out.toString("base64");
+  } catch (err) {
+    console.warn("[crop] failed:", err.message);
+    return null;
+  }
+}
+
+/**
+ * Full pipeline. Returns { originalUrl, enhancedImageUrl, tags, backgroundRemoved, stored, cropped }.
+ * Pass `box` (from Gemini locateProduct) to isolate the described product first.
+ */
+async function enhanceProductPhoto(imageBase64, { box = null } = {}) {
   const originalDataUrl = `data:image/jpeg;base64,${cleanBase64(imageBase64)}`;
   const tags = [];
 
+  const cropped = box ? await cropToBox(imageBase64, box) : null;
+  const subject = cropped || imageBase64;
+  if (cropped) tags.push("focused_on_product");
+
   const [cutout, originalAsset] = await Promise.all([
-    removeBackground(imageBase64),
+    removeBackground(subject),
     uploadToCloudinary(originalDataUrl, "originals"),
   ]);
 
@@ -96,6 +130,8 @@ async function enhanceProductPhoto(imageBase64) {
   if (cutout) {
     enhancedDataUrl = `data:image/jpeg;base64,${cutout.toString("base64")}`;
     tags.push("background_removed", "cropped_to_product");
+  } else if (cropped) {
+    enhancedDataUrl = `data:image/jpeg;base64,${cropped}`;
   }
 
   let enhancedImageUrl = null;
@@ -112,6 +148,7 @@ async function enhanceProductPhoto(imageBase64) {
     enhancedImageUrl,
     tags,
     backgroundRemoved: !!cutout,
+    cropped: !!cropped,
     stored: enhancedImageUrl ? enhancedImageUrl.startsWith("http") : false,
   };
 }

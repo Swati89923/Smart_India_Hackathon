@@ -122,12 +122,13 @@ Return JSON: {"transcript": "...", "language": "hi | en | hi-en | <ISO code>", "
 /**
  * Identify the product in the photo and assess photo quality.
  */
-async function analyzeProductImage({ imageBase64, mimeType = "image/jpeg", craft = "" }) {
+async function analyzeProductImage({ imageBase64, mimeType = "image/jpeg", craft = "", description = "" }) {
   const model = getModel({ temperature: 0.2, thinking: "minimal" });
   if (!model || !imageBase64) return null;
 
   const prompt = `
 You are helping an Indian artisan list a handmade product online. The artisan said the craft is "${craft || "unknown"}".
+${description ? `The artisan described the product as: """${description}""" — identify THAT product, not the surface or background it lies on.` : ""}
 Look carefully at the photo.
 Return JSON:
 {
@@ -146,6 +147,35 @@ Return JSON:
   if (!out) return null;
   const { _model, ...rest } = out;
   return { ...rest, craft: CRAFT_KEYS.includes(out.craft) ? out.craft : craft, source: _model };
+}
+
+/**
+ * Find the artisan's product in a cluttered photo using their own description.
+ * Returns { found, label, box: {x0,y0,x1,y1} as 0-1 fractions, source } or null.
+ */
+async function locateProduct({ imageBase64, mimeType = "image/jpeg", description = "", craft = "" }) {
+  const model = getModel({ temperature: 0, thinking: "low" });
+  if (!model || !imageBase64) return null;
+
+  const prompt = `
+An Indian artisan photographed their handmade product. The photo may also contain other things (a laptop, bedsheet, table, hands, other objects).
+Craft: "${craft || "unknown"}".
+The artisan described the product as (Hindi/English): """${description || "not provided"}"""
+
+Find ONLY the handmade product the artisan is describing — not the surface it lies on or anything in the background.
+If several pieces belong to the same product (e.g. a keychain with a flower and dangling bells), include all of them in one box.
+Return JSON:
+{
+  "found": true | false,
+  "label": "short English name of the product you found",
+  "box_2d": [ymin, xmin, ymax, xmax]   // integers 0-1000, normalized to the image size
+}
+`;
+  const out = await askJson(model, [prompt, imagePart(imageBase64, mimeType)], "locateProduct");
+  if (!out || !out.found || !Array.isArray(out.box_2d) || out.box_2d.length !== 4) return out ? { found: false, source: out._model } : null;
+  const [y0, x0, y1, x1] = out.box_2d.map((v) => Math.max(0, Math.min(1000, Number(v))) / 1000);
+  if (!(x1 > x0 && y1 > y0)) return { found: false, source: out._model };
+  return { found: true, label: out.label || "", box: { x0, y0, x1, y1 }, source: out._model };
 }
 
 /**
@@ -217,6 +247,7 @@ module.exports = {
   geminiModel: MODEL,
   transcribeAudio,
   analyzeProductImage,
+  locateProduct,
   generateMultimodalCatalogue,
   translateArtisanText,
 };

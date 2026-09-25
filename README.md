@@ -139,6 +139,7 @@ npx expo start              # scan the QR code with Expo Go
 | `GEMINI_API_KEY` | https://aistudio.google.com → Get API key | Voice transcription, AI listing generation, product identification |
 | `REMOVE_BG_API_KEY` | https://www.remove.bg/api | Real background removal (50 free calls/month) |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | https://console.cloudinary.com → Dashboard | Photo storage / CDN. Use the short **Cloud name** shown on the dashboard, not your account name |
+| `SERPAPI_KEY` (optional) | https://serpapi.com → free plan | Live Flipkart/Amazon/Meesho prices for price suggestions (otherwise AI estimate) |
 | `JWT_SECRET` | Any long random string | Required |
 
 - **The app runs without any keys** (demo data + templates), so teammates working only on the UI don't need keys.
