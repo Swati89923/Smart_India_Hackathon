@@ -249,7 +249,7 @@ function VoiceStep({ craft, photo, voice, setVoice, onNext }) {
         {photo && <img src={photo} alt="Your product" className="voice-thumb" />}
         <div>
           <h2>Describe Your Product <small>अपने उत्पाद के बारे में बताइए</small></h2>
-          <p className="muted">Say what it is first (e.g. “crochet flower keychain”) — AI uses this to find your product in the photo and remove everything else. Then tell the material, days of work and the story.</p>
+          <p className="muted">Say what it is first (e.g. “crochet flower keychain”) — AI uses this to find your product in the photo and remove everything else. Then say the <b>material</b> (e.g. “ऊन से बना”), days of work and the story.</p>
         </div>
       </div>
       <div className="voice-box">
@@ -309,7 +309,9 @@ function DetailsStep({ details, setDetails, busy, onRegenerate, onNext }) {
         <Field label="Title"><input value={details.title} onChange={set("title")} /></Field>
         <Field label="Title (Hindi)"><input value={details.titleHi} onChange={set("titleHi")} className="hi" /></Field>
         <Field label="Category"><input value={details.category} onChange={set("category")} /></Field>
-        <Field label="Material"><input value={details.materials} onChange={set("materials")} /></Field>
+        <Field label="Material" hint={details.materialsSource === "photo" ? <span className="guess">⚠ Photo se andaza — aapne material nahi bataya. Sahi material likhein (jaise wool / ऊन, cotton / सूती).</span> : null}>
+          <input value={details.materials} onChange={(e) => setDetails({ ...details, materials: e.target.value, materialsSource: "artisan" })} className={details.materialsSource === "photo" ? "input-guess" : ""} />
+        </Field>
         <Field label="Description (Hindi)" className="span-2"><textarea rows={3} value={details.descriptionHi} onChange={set("descriptionHi")} className="hi" /></Field>
         <Field label="Description (English)" className="span-2"><textarea rows={3} value={details.description} onChange={set("description")} /></Field>
       </div>

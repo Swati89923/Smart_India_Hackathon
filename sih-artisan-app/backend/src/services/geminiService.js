@@ -25,7 +25,7 @@ function isGeminiConfigured() {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const isTransient = (err) => /\b(429|500|503|504)\b|overloaded|high demand|UNAVAILABLE|fetch failed/i.test(String(err?.message || err));
+const isTransient = (err) => /\b(429|500|503|504)\b|overloaded|high demand|UNAVAILABLE|fetch failed|aborted|timed? ?out|ECONNRESET/i.test(String(err?.message || err));
 
 // Models that just returned 503/429 are skipped for a while (simple circuit breaker).
 const cooling = new Map();
@@ -195,6 +195,10 @@ Inputs:
 Rules:
 - Describe THIS product only. Identify it from the photo; use the artisan's words for facts (materials, days of work, region, story, size, use).
 - Never invent facts that contradict the photo or the artisan's words. If the artisan mentions something, include it.
+- MATERIALS: the artisan's words always win over what the photo looks like (e.g. crochet can look like cotton but be wool).
+  Hindi words: ऊन/ऊनी = wool, सूती/कॉटन = cotton, रेशम = silk, मिट्टी = clay, लकड़ी = wood, चांदी = silver, पीतल = brass, जूट = jute.
+  If the artisan did not say the material, give your best guess from the photo and set "materialsSource" to "photo".
+- Use the same material consistently in the title, descriptions, materials and tags.
 - Warm, honest, commercial tone; 2-4 sentences per description.
 
 Return JSON:
@@ -206,6 +210,7 @@ Return JSON:
   "category": "Home Decor | Textile | Wall Art | Jewellery | Apparel | Kitchen & Dining | Furniture | Accessories | Handicraft",
   "craft": one of ${JSON.stringify(CRAFT_KEYS)},
   "materials": "main materials",
+  "materialsSource": "artisan" | "photo",
   "tags": ["5-7 search tags"]
 }
 `;
@@ -221,6 +226,7 @@ Return JSON:
     category: parsed.category || "Handicraft",
     craft: CRAFT_KEYS.includes(parsed.craft) ? parsed.craft : craft,
     materials: parsed.materials || "",
+    materialsSource: parsed.materialsSource === "artisan" ? "artisan" : "photo",
     tags: Array.isArray(parsed.tags) ? parsed.tags : [],
     source: parsed._model,
   };

@@ -192,7 +192,7 @@ function VoiceStep({ craft, photo, voice, setVoice, onNext }) {
         {photo ? <Image source={{ uri: photo.uri }} style={{ width: 64, height: 64, borderRadius: 10 }} /> : null}
         <View style={{ flex: 1, gap: 2 }}>
           <H2>Describe Your Product</H2>
-          <Muted>अपने उत्पाद के बारे में बताइए। Say what it is first (e.g. “crochet flower keychain”) — AI uses it to find your product in the photo and remove everything else.</Muted>
+          <Muted>अपने उत्पाद के बारे में बताइए। Say what it is first (e.g. “crochet flower keychain”) — AI uses it to find your product in the photo. Then say the material (e.g. “ऊन से बना”).</Muted>
         </View>
       </Row>
       <View style={st.voiceBox}>
@@ -241,7 +241,11 @@ function DetailsStep({ details, setDetails, busy, onRegenerate, onNext }) {
       <Field label="Title" value={details.title} onChangeText={set("title")} />
       <Field label="Title (Hindi)" value={details.titleHi} onChangeText={set("titleHi")} />
       <Field label="Category" value={details.category} onChangeText={set("category")} />
-      <Field label="Material" value={details.materials} onChangeText={set("materials")} />
+      <Field label="Material" value={details.materials} onChangeText={(v) => setDetails({ ...details, materials: v, materialsSource: "artisan" })}
+        style={details.materialsSource === "photo" ? { borderRadius: 8, backgroundColor: C.orangeSoft, padding: 6 } : undefined} />
+      {details.materialsSource === "photo" ? (
+        <Note tone="orange" icon="alert-triangle">Photo se andaza — aapne material nahi bataya. Sahi material likhein (jaise wool / ऊन, cotton / सूती).</Note>
+      ) : null}
       <Field label="Description (Hindi)" multiline value={details.descriptionHi} onChangeText={set("descriptionHi")} />
       <Field label="Description (English)" multiline value={details.description} onChangeText={set("description")} />
       {details.tags?.length ? <View style={st.wrap}>{details.tags.map((t) => <Badge key={t} tone="orange">#{t}</Badge>)}</View> : null}
