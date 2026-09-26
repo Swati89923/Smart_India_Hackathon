@@ -77,15 +77,37 @@ function getModel({ json = true, temperature = 0.3, thinking = "low" } = {}) {
 const cleanBase64 = (b64 = "") => b64.replace(/^data:[\w/+.-]+;base64,/, "");
 const imagePart = (b64, mimeType = "image/jpeg") => ({ inlineData: { data: cleanBase64(b64), mimeType } });
 
-async function askJson(model, parts, label) {
+/**
+ * Models sometimes wrap the JSON in stray text ("JSON format…", code fences, a
+ * stray character before the "{"). Take the outermost {...} block.
+ */
+function extractJson(text = "") {
+  const cleaned = text.replace(/```(?:json)?/gi, "").trim();
   try {
-    const { text, model: used } = await model.generate(parts);
-    const out = JSON.parse(text.replace(/^```(?:json)?\s*|\s*```$/g, ""));
-    return Object.assign(out, { _model: used });
-  } catch (err) {
-    console.warn(`[Gemini] ${label} failed:`, err.message || err);
-    return null;
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
+    throw new Error("No JSON object in model reply");
   }
+}
+
+async function askJson(model, parts, label, attempts = 2) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const { text, model: used } = await model.generate(parts);
+      return Object.assign(extractJson(text), { _model: used });
+    } catch (err) {
+      lastErr = err;
+      // Only retry unreadable replies; real API errors were already retried across models
+      if (!/JSON|Unexpected token|Unterminated/i.test(String(err.message))) break;
+      console.warn(`[Gemini] ${label}: unreadable reply, retrying (${i + 1}/${attempts})`);
+    }
+  }
+  console.warn(`[Gemini] ${label} failed:`, lastErr?.message || lastErr);
+  return null;
 }
 
 /**
